@@ -1799,10 +1799,7 @@ function writeToFile(string $filename, string $data):void {
 
 	if (!file_exists($filename)) {
 
-		$user = "billy";
-		if (defined("NODE_ID")) {
-			$user = "www-data"; // на файловой ноде другой пользователь -_-
-		}
+		$user = "www-data";
 
 		$file = fopen($filename, "a");
 		chgrp($filename, $user);
