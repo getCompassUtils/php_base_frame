@@ -41,6 +41,9 @@ class ConfHandler {
 					    array $config_sharding_mysql, array $config_sharding_mcache, array $config_allow_ip):static {
 
 		if (!is_null(static::$_instance)) {
+
+			// подмержим конифг, чтобы оно не падало в монолите
+			static::$_instance->_config_sharding_go = array_merge($config_sharding_go, static::$_instance->_config_sharding_go);
 			return static::$_instance;
 		}
 

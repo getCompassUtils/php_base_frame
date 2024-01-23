@@ -64,6 +64,6 @@ class BaseExceptionHandler {
 		// закрываем соединения
 		ExceptionUtils::doShardingEnd();
 
-		exit();
+		exit(1);
 	}
 }
