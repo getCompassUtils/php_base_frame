@@ -82,8 +82,8 @@ class ConfBaseFrameHandler {
 		$finally_header_list = array_merge(self::_DEFAULT_HEADER_LIST, $header_list);
 
 		// устанавливаем
-		foreach ($finally_header_list as $value) {
-			header($value);
+		foreach ($finally_header_list as $key => $value) {
+			header($key, $value);
 		}
 	}
 
