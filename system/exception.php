@@ -407,7 +407,7 @@ class baseExceptionHandler {
 		// закрываем соединения
 		self::_doShardingEnd();
 
-		exit();
+		exit(1);
 	}
 
 	// формируем сообщение
