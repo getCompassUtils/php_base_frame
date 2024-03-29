@@ -59,6 +59,16 @@ class PhoneNumber {
 	 */
 	private function _normalize(string $phone_number):string {
 
+		// если номер начинается на 89, то заменяем его на +79
+		if (str_starts_with($phone_number, "89")) {
+			$phone_number = substr_replace($phone_number, "+79", 0, 2);
+		}
+
+		// если номер не начинается с "+", то добавляем
+		if (!str_starts_with($phone_number, "+")) {
+			$phone_number = "+" . $phone_number;
+		}
+
 		return str_replace([" ", ".", "-", "(", ")"], "", $phone_number);
 	}
 
