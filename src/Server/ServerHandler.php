@@ -27,7 +27,8 @@ class ServerHandler {
 	/**
 	 * кастомные теги
 	 */
-	public const LOCAL_TAG = "local";
+	public const LOCAL_TAG       = "local";
+	public const INTEGRATION_TAG = "integration";
 
 	/**
 	 * группа по типу окружения

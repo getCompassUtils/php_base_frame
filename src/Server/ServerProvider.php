@@ -113,6 +113,20 @@ class ServerProvider {
 	}
 
 	/**
+	 * проверяем, что сервер с интеграцией
+	 *
+	 * @return bool
+	 */
+	public static function isIntegration():bool {
+
+		if (self::_hasTag(ServerHandler::INTEGRATION_TAG)) {
+			return true;
+		}
+
+		return false;
+	}
+
+	/**
 	 * проверяем, что это master сервер
 	 *
 	 * @return bool
