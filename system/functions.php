@@ -502,6 +502,19 @@ function weekStart(int $time = null):int {
 }
 
 /**
+ * время начала текущей недели по UTC
+ *
+ * @param int|null $time
+ *
+ * @return int
+ */
+function weekStartOnGreenwich():int {
+
+	$datetime = (new \DateTime())->setTimezone(new \DateTimeZone("UTC"));
+	return $datetime->modify("Monday this week")->getTimestamp();
+}
+
+/**
  * время начала текущего месяца
  *
  * @param int|null $time
@@ -1155,6 +1168,29 @@ function obfuscateFullName(string $full_name):string {
 }
 
 /**
+ * Универсальняа функция для скрытия слов в строке
+ */
+function obfuscateWords(string $string, int $visible_count = 1):string {
+
+	$string_length = mb_strlen($string);
+
+	$delimiter = " ";
+	$words = explode($delimiter, $string);
+
+	$output = (string) array_reduce($words, static function(string $output, string $word) use ($visible_count, $delimiter) {
+
+		$length = mb_strlen($word);
+		$hidden_count = $length - ($visible_count * 2);
+
+		return $output . mb_substr($word, 0, $visible_count)
+			. ($hidden_count < 0 ? "" : str_repeat('*', $hidden_count))
+			. mb_substr($word, ($visible_count * -1), $visible_count) . $delimiter;
+	}, "");
+
+	return mb_substr($output, 0, $string_length);
+}
+
+/**
  * вернуть массив отсортированный в едином формате для создания подписи
  *
  * @param array $array
@@ -1412,13 +1448,19 @@ function inHtml(string $html, string $str):bool {
  *
  * @return string
  */
-function generateRandomString(int $length = 10):string {
+function generateRandomString(int $length = 10, bool $with_special_characters = false):string {
 
-	$characters       = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+	$characters         = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+	$special_characters = "!@#$%^&*()";
+
+	if ($with_special_characters) {
+		$characters .= $special_characters;
+	}
+
 	$charactersLength = strlen($characters);
 	$randomString     = "";
 	for ($i = 0; $i < $length; $i++) {
-		$randomString .= $characters[rand(0, $charactersLength - 1)];
+		$randomString .= $characters[random_int(0, $charactersLength - 1)];
 	}
 
 	return $randomString;
@@ -2349,11 +2391,11 @@ function checkGuid(string $value):bool {
 function matchUuid(int $version_uuid):string {
 
 	return match ($version_uuid) {
-		1       => "/^[0-9A-F]{8}-[0-9A-F]{4}-[1][0-9A-F]{3}-[89AB][0-9A-F]{3}-[0-9A-F]{12}$/",
-		2       => "/^[0-9A-F]{8}-[0-9A-F]{4}-[2][0-9A-F]{3}-[89AB][0-9A-F]{3}-[0-9A-F]{12}$/",
-		3       => "/^[0-9A-F]{8}-[0-9A-F]{4}-[3][0-9A-F]{3}-[89AB][0-9A-F]{3}-[0-9A-F]{12}$/",
-		4       => "/^[0-9a-f]{8}-[0-9a-f]{4}-[4][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/",
-		5       => "/^[0-9A-F]{8}-[0-9A-F]{4}-[5][0-9A-F]{3}-[89AB][0-9A-F]{3}-[0-9A-F]{12}$/i",
+		1 => "/^[0-9A-F]{8}-[0-9A-F]{4}-[1][0-9A-F]{3}-[89AB][0-9A-F]{3}-[0-9A-F]{12}$/",
+		2 => "/^[0-9A-F]{8}-[0-9A-F]{4}-[2][0-9A-F]{3}-[89AB][0-9A-F]{3}-[0-9A-F]{12}$/",
+		3 => "/^[0-9A-F]{8}-[0-9A-F]{4}-[3][0-9A-F]{3}-[89AB][0-9A-F]{3}-[0-9A-F]{12}$/",
+		4 => "/^[0-9a-f]{8}-[0-9a-f]{4}-[4][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/",
+		5 => "/^[0-9A-F]{8}-[0-9A-F]{4}-[5][0-9A-F]{3}-[89AB][0-9A-F]{3}-[0-9A-F]{12}$/i",
 		default => throw new cs_InvalidUuidVersionException(),
 	};
 }
