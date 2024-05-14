@@ -1,6 +1,7 @@
 <?php declare(strict_types=1);
 
 use BaseFrame\Exception\Domain\ParseFatalException;
+use BaseFrame\Exception\Gateway\DBShardingNotFoundException;
 
 /**
  * Класс шардинга
@@ -70,7 +71,7 @@ abstract class ShardingGateway {
 		$conf = static::instance()->_config_list[static::DB_KEY];
 
 		if (!isset($conf[$database])) {
-			throw new ParseFatalException("database not found in sharding config");
+			throw new DBShardingNotFoundException("database not found in sharding config");
 		}
 
 		return sharding::configuredPDO($conf[$database]);
