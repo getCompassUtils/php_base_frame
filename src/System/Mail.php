@@ -50,7 +50,7 @@ class Mail {
 	 */
 	private function _normalize(string $mail):string {
 
-		return strtolower(trim($mail));
+		return mb_strtolower(trim($mail));
 	}
 
 	/**
@@ -70,6 +70,33 @@ class Mail {
 	 */
 	public function getDomain():string {
 
-		return substr($this->_mail, strpos($this->_mail, "@") + 1);
+		return mb_substr($this->_mail, strpos($this->_mail, "@") + 1);
+	}
+
+	/**
+	 * Обфусцировать почту
+	 *
+	 * @return string
+	 */
+	public function obfuscate():string {
+
+		$parts = explode("@", $this->_mail);
+
+		$name   = $parts[0];
+		$domain = $parts[1];
+
+		$name_length = mb_strlen($name);
+
+		if ($name_length == 1) {
+			$name_mask = "*";
+		} elseif ($name_length == 2) {
+			$name_mask = "*" . $name[1];
+		} elseif ($name_length == 3) {
+			$name_mask = $name[0] . "*" . $name[2];
+		} else {
+			$name_mask = mb_substr($name, 0, 2) . str_repeat("*", $name_length - 3) . mb_substr($name, -1);
+		}
+
+		return $name_mask . "@" . $domain;
 	}
 }

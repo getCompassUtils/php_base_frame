@@ -1896,13 +1896,11 @@ function isMobile():bool {
 }
 
 /**
- * генерируем код для sms
- *
- * @return string
- * @throws Exception
+ * Генерирует код подтверждения.
  */
 function generateConfirmCode():string {
 
+	/** @noinspection PhpUnhandledExceptionInspection */
 	$code = random_int(100000, 999999);
 
 	// если тестовый сервер

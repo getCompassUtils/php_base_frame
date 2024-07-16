@@ -67,7 +67,7 @@ abstract class Api extends Base {
 
 			$actions = $this->action->getActions();
 			if (count($actions) > 0) {
-				$response["actions"] = $actions;
+				$response["actions"] = array_merge($response["actions"] ?? [], $actions);
 			}
 		}
 

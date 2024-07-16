@@ -218,6 +218,24 @@ class Curl {
 	}
 
 	/**
+	 * patch запрос
+	 *
+	 * @return string
+	 * @throws cs_CurlError
+	 */
+	public function patch(string $url, mixed $params = [], array $headers = []):string {
+
+		$params = is_array($params) ? http_build_query($params) : $params;
+
+		curl_setopt($this->_curl, CURLOPT_RETURNTRANSFER, true);
+		curl_setopt($this->_curl, CURLOPT_POSTFIELDS, $params);
+		curl_setopt($this->_curl, CURLOPT_CUSTOMREQUEST, "PATCH");
+		curl_setopt($this->_curl, CURLOPT_USERAGENT, $this->_user_agent);
+
+		return $this->_exec($url, $headers);
+	}
+
+	/**
 	 * получаем response code
 	 *
 	 * @return int

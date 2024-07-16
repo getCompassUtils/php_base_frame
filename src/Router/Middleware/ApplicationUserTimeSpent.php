@@ -68,15 +68,15 @@ class ApplicationUserTimeSpent implements Main {
 		// добавляем время жизни для куки
 		$cookie_live_expires_at = time() + DAY1 * 360;
 
-		setcookie(
-			self::_ACTIVITY_KEY,
-			time(),
-			$cookie_live_expires_at,
-			"/",
-			UrlProvider::pivotDomain(),
-			false,
-			false
-		);
+		// устанавливаем session_key для пользователя
+		setcookie(self::_ACTIVITY_KEY,time(), [
+			"expires"  => $cookie_live_expires_at,
+			"path"     => "/",
+			"domain"   => UrlProvider::pivotDomain(),
+			"secure"   => true,
+			"httponly" => false,
+			"samesite" => "None"
+		]);
 	}
 
 	/**
