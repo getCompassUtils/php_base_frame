@@ -15,8 +15,11 @@ class Bus {
 		// формируем ключ для хранения подключения
 		$key = $key === "" ? "{$conf["host"]}:{$conf["port"]}" : $key;
 
+		$ca_certificate = $conf["ca_certificate"] ?? "";
+		$token          = $conf["token"] ?? "";
+
 		if (!isset($GLOBALS[self::_GLOBAL_KEY][$key])) {
-			$GLOBALS[self::_GLOBAL_KEY][$key] = new Grpc($conf["host"], $conf["port"], $class_name);
+			$GLOBALS[self::_GLOBAL_KEY][$key] = new Grpc($conf["host"], $conf["port"], $ca_certificate, $token, $class_name);
 		}
 
 		return $GLOBALS[self::_GLOBAL_KEY][$key];
@@ -25,12 +28,15 @@ class Bus {
 	// инициализируем bus
 	public static function getConnection(string $service, string $class_name):Grpc {
 
+		$ca_certificate = $conf["ca_certificate"] ?? "";
+		$token          = $conf["token"] ?? "";
+
 		if (!isset($GLOBALS[self::_GLOBAL_KEY][$service])) {
 
 			// получаем sharding конфиг
 			$conf = ConfProvider::shardingGo()[$service];
 
-			$GLOBALS[self::_GLOBAL_KEY][$service] = new Grpc($conf["host"], $conf["port"], $class_name);
+			$GLOBALS[self::_GLOBAL_KEY][$service] = new Grpc($conf["host"], $conf["port"], $ca_certificate, $token, $class_name);
 		}
 
 		return $GLOBALS[self::_GLOBAL_KEY][$service];

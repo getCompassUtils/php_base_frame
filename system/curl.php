@@ -314,6 +314,36 @@ class Curl {
 	}
 
 	/**
+	 * загружаем файл с помощью его содержимого
+	 *
+	 * @return bool|string
+	 * @throws cs_CurlError
+	 */
+	public function uploadFileBase64(string $url, array $ar_post, string $base64_encoded_file_content, string $mime_type, string $posted_filename, array $headers = []):bool|string {
+
+		// создаем временный файл для хранения blob данных
+		$tmp_file = tmpfile();
+		fwrite($tmp_file, base64_decode($base64_encoded_file_content));
+
+		// получаем метаданные временного файла
+		$meta_data     = stream_get_meta_data($tmp_file);
+		$tmp_file_path = $meta_data["uri"];
+
+		// докидываем файл в апи запрос
+		$ar_post["file"] = new CURLFile($tmp_file_path, $mime_type, $posted_filename);
+
+		curl_setopt($this->_curl, CURLOPT_POST, true);
+		curl_setopt($this->_curl, CURLOPT_POSTFIELDS, $ar_post);
+		$response = $this->_exec($url, $headers);
+
+		// закрываем временный файл
+		// здесь же он и удаляется
+		fclose($tmp_file);
+
+		return $response;
+	}
+
+	/**
 	 * добавляем опции к запросу
 	 *
 	 * @param $option

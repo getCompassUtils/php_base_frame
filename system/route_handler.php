@@ -19,7 +19,7 @@ interface RouteHandler {
 	public function getServedRoutes():array;
 
 	/**
-	 * Возвращает тип обслуживаемых запросов (apiv1, apiv2, socket).
+	 * Возвращает тип обслуживаемых запросов (apiv1, apiv2, socket, backdoor).
 	 */
 	public function getType():string;
 
