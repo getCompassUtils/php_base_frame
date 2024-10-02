@@ -53,6 +53,7 @@ class Main {
 		$curl = new \Curl();
 		$curl->setTimeout(self::_CURL_TIMEOUT);
 		$curl->needVerify();
+		$curl->setCaCertificate(SocketProvider::caCertificate());
 
 		// необходимо для комфортного дебага + удобный функционал на любой окружении манипулировать таймаутами
 		// локально устанавливается в compose.yml::app.environment

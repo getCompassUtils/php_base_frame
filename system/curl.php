@@ -24,6 +24,7 @@ class Curl {
 	protected mixed  $_options          = [
 		"url" => null,
 	];
+	protected string $_ca_certificate = "";
 
 	/**
 	 * конструктор
@@ -51,6 +52,17 @@ class Curl {
 	public function __destruct() {
 
 		curl_close($this->_curl);
+	}
+
+	/**
+	 * Устанавливаем CA сертификат
+	 *
+	 * @param string $ca_certificate
+	 *
+	 * @return void
+	 */
+	public function setCaCertificate(string $ca_certificate): void {
+		$this->_ca_certificate = $ca_certificate;
 	}
 
 	/**
@@ -439,6 +451,11 @@ class Curl {
 
 		if ($this->_accept_language !== "") {
 			$headers["Accept-Language"] = $this->_accept_language;
+		}
+
+		// если передали ca сертификат - устанавливаем
+		if ($this->_ca_certificate !== "") {
+			curl_setopt($this->_curl, CURLOPT_CAINFO_BLOB, $this->_ca_certificate);
 		}
 
 		if (count($headers) > 0) {

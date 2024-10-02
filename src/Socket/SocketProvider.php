@@ -40,4 +40,15 @@ class SocketProvider {
 
 		return SocketHandler::instance()->keyMe();
 	}
+
+	/**
+	 * Получаем корневой сертификат
+	 *
+	 * @return string
+	 * @throws \BaseFrame\Exception\Domain\ReturnFatalException
+	 */
+	public static function caCertificate():string {
+
+		return SocketHandler::instance()->caCertificate();
+	}
 }
