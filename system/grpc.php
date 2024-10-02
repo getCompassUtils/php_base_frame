@@ -12,8 +12,10 @@ class Grpc {
 	/** @var \Grpc\BaseStub|null */
 	protected ?\Grpc\BaseStub $_grpc_connection = null;
 
-	protected string $_key       = "";
-	protected string $_classname = "";
+	protected string $_key            = "";
+	protected string $_classname      = "";
+	protected string $_ca_certificate = "";
+	protected string $_token          = "";
 
 	// -------------------------------------------------------
 	// gRPC
@@ -22,16 +24,19 @@ class Grpc {
 	protected const _GRPC_CONNECTION_TIMEOUT = 1 * 400000; // равно 0.4 от секунды (400ms) — gRPC требует значение в микросекундах
 
 	// возвращает grpc клиент для соединения
-	public function __construct(string $host, string $port, string $classname) {
+	public function __construct(string $host, string $port, string $ca_certificate, string $token, string $classname) {
 
-		$this->_key       = "$host:$port";
-		$this->_classname = $classname;
-
+		$this->_key            = "$host:$port";
+		$this->_classname      = $classname;
+		$this->_ca_certificate = $ca_certificate;
+		$this->_token          = $token;
 		$this->_openConnection();
 	}
 
 	// открываем коннект
 	protected function _openConnection():void {
+
+		$credentials = $this->_ca_certificate !== "" ? \Grpc\ChannelCredentials::createSsl($this->_ca_certificate) : \Grpc\ChannelCredentials::createInsecure();
 
 		// создаем объект соединения
 		/** @var \Grpc\BaseStub */
@@ -39,7 +44,15 @@ class Grpc {
 			"grpc_target_persist_bound"       => 1,
 			"grpc.max_send_message_length"    => 1024 * 1024 * 10,
 			"grpc.max_receive_message_length" => 1024 * 1024 * 10,
-			"credentials"                     => \Grpc\ChannelCredentials::createInsecure(),
+			"credentials"                     => $credentials,
+			"update_metadata"                 => function(array $metadata) {
+
+				if ($this->_token !== "") {
+					$metadata["Authorization"] = [$this->_token];
+				}
+
+				return $metadata;
+			},
 		]);
 
 		$this->_grpc_connection = $client;
@@ -82,7 +95,7 @@ class Grpc {
 			$error_count++;
 
 			if ($error_count <= 1) {
-				
+
 				$this->_openConnection();
 				return $this->callGrpc($method_name, $request, $error_count);
 			}
