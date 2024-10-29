@@ -59,13 +59,9 @@ abstract class ShardingGateway {
 
 	/**
 	 * Возвращает класс для работы с базой данных
-	 *
-	 * @param string $database
-	 *
-	 * @return myPDObasic
-	 * @throws ParseFatalException
+	 * @throws \BaseFrame\Exception\Gateway\DBShardingNotFoundException
 	 */
-	public static function database(string $database):myPDObasic {
+	public static function database(string $database):\BaseFrame\Database\PDODriver {
 
 		// получаем конфиг с базой данных
 		$conf = static::instance()->_config_list[static::DB_KEY];
