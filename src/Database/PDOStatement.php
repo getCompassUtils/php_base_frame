@@ -9,8 +9,9 @@ class PDOStatement extends \PDOStatement {
 
 	/**
 	 * @inheritDoc
-	 * @return static
+	 * @return bool
 	 */
+	#[\ReturnTypeWillChange]
 	public function execute(array|null $params = []):mixed {
 
 		parent::execute($params);
