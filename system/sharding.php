@@ -226,8 +226,10 @@ class sharding {
 
 /**
  * класс для расширения и удобства работы с базой данных через PDO
+ * @deprecated заменено на \BaseFrame\Database\PDODriver
  */
-class myPDObasic extends PDO {
+#[\JetBrains\PhpStorm\Deprecated(reason: "заменено на \BaseFrame\Database\PDODriver")]
+class myPDObasic extends \BaseFrame\Database\PDODriver {
 
 	public const ISOLATION_READ_UNCOMMITTED = "READ UNCOMMITTED";
 	public const ISOLATION_REPEATABLE_READ  = "REPEATABLE READ";
@@ -403,11 +405,11 @@ class myPDObasic extends PDO {
 	 * @param array  $insert
 	 * @param bool   $is_ignore
 	 *
-	 * @return string|void
-	 * @throws queryException
+	 * @return false|string
+	 * @throws \queryException
 	 * @mixed - хз что вернет
 	 */
-	public function insert(string $table, array $insert, bool $is_ignore = true) {
+	public function insert(string $table, array $insert, bool $is_ignore = true):false|string {
 
 		if (!is_array($insert) || count($insert) < 1) {
 			return $this->_throwError("INSERT DATA is empty!");
@@ -420,13 +422,13 @@ class myPDObasic extends PDO {
 	}
 
 	// вставить массив значенй в таблицу (возвращает количество вставленных строк)
-	public function insertArray(string $table, array $list):int {
+	public function insertArray(string $table, array $insert):int {
 
-		if (!is_array($list) || count($list) < 1) {
+		if (!is_array($insert) || count($insert) < 1) {
 			$this->_throwError("INSERT DATA is empty!");
 		}
 
-		$query = $this->_formatArray($table, $list);
+		$query = $this->_formatArray($table, $insert);
 		$this->_showDebugIfNeed($query);
 		$result = $this->query($query);
 		return $result->rowCount();
@@ -438,10 +440,10 @@ class myPDObasic extends PDO {
 	 *
 	 * @return int
 	 */
-	public function insertArrayOrUpdate(string $table, array $list, array $update):int {
+	public function insertArrayOrUpdate(string $table, array $insert, array $update):int {
 
 		$set   = $this->_makeQuery($update);
-		$query = $this->_formatArray($table, $list);
+		$query = $this->_formatArray($table, $insert);
 		$query .= "on duplicate key update
 			{$set}
 		";
@@ -667,7 +669,7 @@ class myPDObasic extends PDO {
 	 * @throws queryException
 	 * @mixed тут что угодно
 	 */
-	protected function _escapeInt($value) {
+	protected function _escapeInt($value):int {
 
 		if ($value === null) {
 			return "NULL";
