@@ -23,7 +23,6 @@ class Connection {
 		$this->options[\PDO::ATTR_ERRMODE]            ??= \PDO::ERRMODE_EXCEPTION;
 		$this->options[\PDO::ATTR_DEFAULT_FETCH_MODE] ??= \PDO::FETCH_ASSOC;
 		$this->options[\PDO::ATTR_EMULATE_PREPARES]   ??= true;
-		$this->options[\PDO::ATTR_STATEMENT_CLASS]    ??= [\BaseFrame\Database\PDOStatement::class];
 	}
 
 	/**

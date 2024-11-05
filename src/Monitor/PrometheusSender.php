@@ -14,7 +14,8 @@ class PrometheusSender implements Sender {
 
 	protected function __construct(string $module) {
 
-		$this->_module = $module;
+		$this->_module      = $module;
+		$this->_metric_list = [];
 	}
 
 	// инициализируем и кладем класс в $GLOBALS

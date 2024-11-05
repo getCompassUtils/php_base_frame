@@ -5,6 +5,7 @@
  */
 
 use \BaseFrame\Path\PathProvider;
+use BaseFrame\System\File;
 
 set_time_limit(0);
 ini_set("memory_limit", "256M");
@@ -384,7 +385,7 @@ class Cron_Default {
 		$type    = $this->bot_name . ".{$bot_id}";
 		$date    = date(DATE_FORMAT_FULL);
 		$message = "$date\t$message";
-		@file_put_contents(PathProvider::configLogCron() . $type . ".log", $message . "\n", FILE_APPEND);
+		File::init(PathProvider::configLogCron(), $type . ".log")->write($message, true);
 	}
 
 	// название очереди для крона
@@ -485,31 +486,35 @@ class Cron_Default {
 	}
 
 	// получаем pid крона
-	protected function _getPid(string $path = null):int {
+	protected function _getPid(File $file = null):int {
 
-		if ($path == null) {
-			$path = $this->_getLockFile($this->bot_id);
+		if ($file == null) {
+			$file = $this->_getLockFile($this->bot_id);
 		}
 
-		if (!file_exists($path)) {
+		if (!$file->isExists()) {
 			return 0;
 		}
-		return intval(file_get_contents($path));
+
+		return (int) $file->read();
 	}
 
 	// устанавливаем pid крона
 	protected function _setPid(int $pid):void {
 
-		$path = $this->_getLockFile($this->bot_id);
-		file_put_contents($path, $pid);
+		$file = $this->_getLockFile($this->bot_id);
+		$file->write($pid);
 	}
 
-	// возвращает имя LOCK файла в котором крон хранит свой PID
-	protected function _getLockFile(string $bot_id = "bot0"):string {
+	/**
+	 * Получаем lock файл, в котором крон хранит свой pid
+	 *
+	 * @return File
+	 */
+	protected function _getLockFile(string $bot_id = "bot0"):File {
 
 		global $argv;
-
-		return PathProvider::root() . "cache/" . md5($argv[0]) . "_{$bot_id}.lock";
+		return File::init(PathProvider::root() . "cache/", md5($argv[0]) . "_{$bot_id}.lock");
 	}
 
 	// проверяем используемую память
