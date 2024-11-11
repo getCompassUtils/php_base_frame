@@ -13,6 +13,7 @@ use \BaseFrame\Conf\ConfBaseFrameProvider;
 # region        Работа с API
 ####################################################
 use BaseFrame\Exception\Domain\ParseFatalException;
+use BaseFrame\System\File;
 
 /**
  * получаем get параметр из запроса
@@ -947,9 +948,9 @@ function loadConfig(string $file):void {
 
 	global $CONFIG;
 	$_    = $CONFIG;
-	$path = PathProvider::api() . "/conf/" . $file . ".php";
-	if (file_exists($path)) {
-		include($path);
+	$file = File::init(PathProvider::api() . "/conf/", $file . ".php");
+	if ($file->isExists()) {
+		include($file->getFilePath());
 	}
 }
 
@@ -961,25 +962,25 @@ function loadConfig(string $file):void {
  *
  * @return void
  */
-function loadSystemConfig(string $file):void {
+function loadSystemConfig(string $file_path):void {
 
 	global $CONFIG;
 	$_ = $CONFIG;
 
 	// проверяем путь для старой структуры проектов
-	$path = PathProvider::root() . "api/modules/vendor/service/php_base_frame/conf/" . $file . ".php";
+	$file = File::init(PathProvider::root() . "api/modules/vendor/service/php_base_frame/conf/", $file_path . ".php");
 
-	if (file_exists($path)) {
+	if ($file->isExists()) {
 
-		include($path);
+		include($file->getFilePath());
 		return;
 	}
 
 	// проверяем путь для модульной структуры проектов
-	$path = PathProvider::root() . "src/Modules/vendor/service/php_base_frame/conf/" . $file . ".php";
+	$file = File::init(PathProvider::root() . "src/Modules/vendor/service/php_base_frame/conf/", $file_path . ".php");
 
-	if (file_exists($path)) {
-		include($path);
+	if ($file->isExists()) {
+		include($file->getFilePath());
 	}
 }
 
@@ -1638,7 +1639,7 @@ function showAjax($output):void {
 		header("Content-type: application/json;charset=" . ConfBaseFrameProvider::webCharset());
 	}
 
-	$txt = is_array($output) ? toJson($output) : $output;
+	$txt = is_array($output) ? toJson($output) : htmlentities($output, ENT_NOQUOTES);
 	echo $txt;
 }
 

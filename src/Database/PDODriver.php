@@ -4,6 +4,7 @@ namespace BaseFrame\Database;
 
 use BaseFrame\Database\PDODriver\DebugMode;
 use BaseFrame\Exception\Gateway\QueryFatalException;
+use PDOStatement;
 
 /**
  * Класс для работы с базой данных SQL.
@@ -50,15 +51,6 @@ class PDODriver extends \PDO {
 	public function __construct(string $dsn, ?string $username = null, ?string $password = null, ?array $options = null) {
 
 		parent::__construct($dsn, $username, $password, $options);
-	}
-
-	/**
-	 * @inheritDoc
-	 */
-	public function query(mixed ...$args):\PDOStatement|false {
-
-		return parent::query(...$args);
-		// return new \PDOStatement();
 	}
 
 	/**
@@ -128,15 +120,13 @@ class PDODriver extends \PDO {
 	 */
 	public function insert(string $table, array $insert, bool $is_ignore = true):false|string {
 
-		if (count($insert) < 1) {
+		if (!is_array($insert) || count($insert) < 1) {
 			throw new QueryFatalException("INSERT DATA is empty!");
 		}
 
-		$query = $this->_formatInsertQuery($table, [$insert], $is_ignore);
-
-		$this->_debug($query);
-		$this->query($query);
-
+		$prepared_query = $this->_prepareInsertQuery($table, [$insert], $is_ignore);
+		$this->_debug($prepared_query->queryString);
+		$prepared_query->execute();
 		return $this->lastInsertId();
 	}
 
@@ -146,14 +136,14 @@ class PDODriver extends \PDO {
 	 */
 	public function insertArray(string $table, array $insert):int {
 
-		if (count($insert) < 1) {
+		if (!is_array($insert) || count($insert) < 1) {
 			throw new QueryFatalException("INSERT DATA is empty!");
 		}
 
-		$query = $this->_formatInsertQuery($table, $insert);
-
-		$this->_debug($query);
-		return $this->query($query)->rowCount();
+		$prepared_query = $this->_prepareInsertQuery($table, $insert);
+		$this->_debug($prepared_query->queryString);
+		$prepared_query->execute();
+		return $prepared_query->rowCount();
 	}
 
 	/**
@@ -164,20 +154,20 @@ class PDODriver extends \PDO {
 	 */
 	public function insertOrUpdate(string $table, array $insert, array $update = null):int {
 
-		if (count($insert) < 1) {
+		if (!is_array($insert) || count($insert) < 1) {
 			throw new QueryFatalException("INSERT DATA is empty!");
 		}
 
 		if ($update === null) {
 			$update = $insert;
 		}
+		[$update_part, $update_params]   = $this->_prepareUpdateQueryPart($table, $update);
+		$prepared_query = $this->_prepareInsertQuery($table, [$insert], update_part: $update_part, update_params: $update_params);
 
-		$set   = $this->_formatUpdateArguments($table, $update);
-		$query = $this->_formatInsertQuery($table, [$insert]);
-		$query .= "ON DUPLICATE KEY UPDATE {$set}";
+		$this->_debug($prepared_query->queryString);
+		$prepared_query->execute();
 
-		$this->_debug($query);
-		return $this->query($query)->rowCount();
+		return $prepared_query->rowCount();
 	}
 
 	/**
@@ -188,68 +178,55 @@ class PDODriver extends \PDO {
 	 */
 	public function insertArrayOrUpdate(string $table, array $insert, array $update):int {
 
-		if (count($insert) < 1) {
-			throw new QueryFatalException("INSERT DATA is empty!");
-		}
+		[$update_part, $update_params]   = $this->_prepareUpdateQueryPart($table, $update);
+		$prepared_query = $this->_prepareInsertQuery($table, $insert, update_part: $update_part, update_params: $update_params);
 
-		$set   = $this->_formatUpdateArguments($table, $update);
-		$query = $this->_formatInsertQuery($table, $insert);
-		$query .= "ON DUPLICATE KEY UPDATE {$set}";
-
-		$this->_debug($query);
-		return $this->query($query)->rowCount();
+		$this->_debug($prepared_query->queryString);
+		$prepared_query->execute();
+		return $prepared_query->rowCount();
 	}
 
 	/**
 	 * Обновляет записи в БД.
 	 * @throws \BaseFrame\Exception\Gateway\QueryFatalException
 	 */
-	public function update():int {
+	public function update(string $query, string $table, ...$params):int {
 
 		// подготавливаем запрос (очищаем его)
-		[$query] = $this->_formatRawQuery(func_get_args());
-
-		if (!inHtml(strtolower($query), "limit") || !inHtml(strtolower($query), "where")) {
-			throw new QueryFatalException("WHERE or LIMIT not found on SQL: {$query}");
-		}
+		$prepared_query = $this->_getPreparedQuery($query, $table, $params);
 
 		$this->_debug($query);
-		return $this->query($query)->rowCount();
+		$prepared_query->execute();
+
+		return $prepared_query->rowCount();
 	}
 
 	/**
 	 * Удаляет записи из базы.
 	 * @throws \BaseFrame\Exception\Gateway\QueryFatalException
 	 */
-	public function delete():int {
+	public function delete(string $query, string $table, ...$params):int {
 
 		// подготавливаем запрос (очищаем его)
-		[$query] = $this->_formatRawQuery(func_get_args());
-
-		if (!inHtml(strtolower($query), "limit") || !inHtml(strtolower($query), "where")) {
-			throw new QueryFatalException("WHERE or LIMIT not found on SQL: {$query}");
-		}
+		$prepared_query = $this->_getPreparedQuery($query, $table, $params);
 
 		$this->_debug($query);
-		return $this->query($query)->rowCount();
+		$prepared_query->execute();
+		return $prepared_query->rowCount();
 	}
 
 	/**
 	 * Достает одну запись из таблицы. Если запись не найдена, вернет пустой массив.
 	 * @throws \BaseFrame\Exception\Gateway\QueryFatalException
 	 */
-	public function getOne():array {
+	public function getOne(string $query, string $table, ...$params):array {
 
 		// подготавливаем запрос (очищаем его)
-		[$query, $table] = $this->_formatRawQuery(func_get_args());
-
-		// если нет лимита
-		if (!inHtml(strtolower($query), "limit") || !inHtml(strtolower($query), "where")) {
-			throw new QueryFatalException("WHERE or LIMIT not found on SQL: {$query}");
-		}
+		$prepared_query = $this->_getPreparedQuery($query, $table, $params);
 
 		$this->_debug($query);
-		$result = $this->query($query)->fetch();
+		$prepared_query->execute();
+		$result = $prepared_query->fetch();
 
 		if (!is_array($result)) {
 			return [];
@@ -263,17 +240,14 @@ class PDODriver extends \PDO {
 	 * Достает из базы несколько записей и возвращает их как массивы строк.
 	 * @throws \BaseFrame\Exception\Gateway\QueryFatalException
 	 */
-	public function getAll():array {
+	public function getAll(string $query, string $table, ...$params):array {
 
 		// подготавливаем запрос (очищаем его)
-		[$query, $table] = $this->_formatRawQuery(func_get_args());
-
-		if (!inHtml(strtolower($query), "limit") || !inHtml(strtolower($query), "where")) {
-			throw new QueryFatalException("WHERE or LIMIT not found on SQL: {$query}");
-		}
+		$prepared_query = $this->_getPreparedQuery($query, $table, $params);
 
 		$this->_debug($query);
-		$result = $this->query($query)->fetchAll();
+		$prepared_query->execute();
+		$result = $prepared_query->fetchAll();
 
 		if (!is_array($result)) {
 			return [];
@@ -283,85 +257,27 @@ class PDODriver extends \PDO {
 	}
 
 	/**
-	 * Выполняет запрос и возвращает объект переданного в параметр класса
-	 * @throws \BaseFrame\Exception\Gateway\QueryFatalException
-	 */
-	public function getOneObject(string $class_name, ...$args) {
-
-		if (!class_exists($class_name)) {
-			throw new QueryFatalException("passed incorrect class name");
-		}
-
-		$raw_result = $this->getOne(...$args);
-
-		if (count($raw_result) === 0) {
-			return [];
-		}
-
-		$instance = new $class_name();
-
-		foreach ($raw_result as $column => $value) {
-			$instance->$column = $value;
-		}
-
-		return $instance;
-	}
-
-	/**
-	 * Выполняет запрос и из полученных данных формирует массив объектов указанного типа.
-	 * @throws \BaseFrame\Exception\Gateway\QueryFatalException
-	 */
-	public function getAllObjects(string $class_name, ...$args):array {
-
-		if (!class_exists($class_name)) {
-			throw new QueryFatalException("passed incorrect class name");
-		}
-
-		// PDO::FETCH_CLASS не используем,
-		// итерировать объекты потом не хочется для поиска данных для перезаписи
-		$raw_result = $this->getAll(...$args);
-		$result     = [];
-
-		foreach ($raw_result as $row) {
-
-			$instance = new $class_name();
-
-			foreach ($row as $column => $value) {
-				$instance->$column = $value;
-			}
-
-			$result[] = $instance;
-		}
-
-		return $result;
-	}
-
-	/**
 	 * Возвращает массив значений первого столбца.
 	 * @throws \BaseFrame\Exception\Gateway\QueryFatalException
 	 */
-	public function getAllColumn(...$args):array {
+	public function getAllColumn(string $query, string $table, ...$params):array {
 
 		// подготавливаем запрос (очищаем его)
-		[$query, $table] = $this->_formatRawQuery($args);
-
-		if (!inHtml(strtolower($query), "limit") || !inHtml(strtolower($query), "where")) {
-			throw new QueryFatalException("WHERE or LIMIT not found on SQL: {$query}");
-		}
-
-		// вытащим список колонок из запроса
-		$selected_columns = $this->_parseSelectStatementColumns($query);
-
-		if (count($selected_columns) !== 1) {
-			throw new QueryFatalException("Expect 1 argument, " . count($selected_columns) . " passed");
-		}
+		$prepared_query = $this->_getPreparedQuery($query, $table, $params);
 
 		$this->_debug($query);
-		$result = $this->query($query)->fetchAll();
+		$prepared_query->execute();
+		$result = $prepared_query->fetchAll();
 
-		if (!is_array($result)) {
+		if (!is_array($result) || $result === []) {
 			return [];
 		}
+
+		if (count($result[0]) != 1) {
+			throw new QueryFatalException("expected 1 argument for column in $query");
+		}
+
+		$selected_columns = array_keys($result[0]);
 
 		return array_column($this->_afterRead($table, $result), $selected_columns[0]);
 	}
@@ -373,80 +289,27 @@ class PDODriver extends \PDO {
 	 *
 	 * @throws \BaseFrame\Exception\Gateway\QueryFatalException
 	 */
-	public function getAllKeyPair(...$args):array {
+	public function getAllKeyPair(string $query, string $table, ...$params):array {
 
 		// подготавливаем запрос (очищаем его)
-		[$query, $table] = $this->_formatRawQuery($args);
-
-		if (!inHtml(strtolower($query), "limit") || !inHtml(strtolower($query), "where")) {
-			throw new QueryFatalException("WHERE or LIMIT not found on SQL: {$query}");
-		}
-
-		// вытащим список колонок из запроса
-		$selected_columns = $this->_parseSelectStatementColumns($query);
-
-		if (count($selected_columns) !== 2) {
-			throw new QueryFatalException("Expect 2 arguments, " . count($selected_columns) . " passed");
-		}
+		$prepared_query = $this->_getPreparedQuery($query, $table, $params);
 
 		$this->_debug($query);
-		$result = $this->query($query)->fetchAll();
+		$prepared_query->execute();
+		$result = $prepared_query->fetchAll();
 
-		if (!is_array($result)) {
+		if (!is_array($result) || $result === []) {
 			return [];
 		}
 
-		$result = $this->_afterRead($table, $result);
+		if (count($result[0]) != 2) {
+			throw new QueryFatalException("expected 2 arguments for key->pair in $query");
+		}
+
+		$selected_columns = array_keys($result[0]);
+		$result           = $this->_afterRead($table, $result);
+
 		return array_combine(array_column($result, $selected_columns[0]), array_column($result, $selected_columns[1]));
-	}
-
-	/**
-	 * Выполняет запрос и возвращает массив классов <b>индексированный значением первого столбца</b>
-	 * возвращаются только <b>уникальные</b> значения по первому столбцу (чаще всего - PK)
-	 *
-	 * @throws \BaseFrame\Exception\Gateway\QueryFatalException
-	 */
-	public function getAllObjectsUnique(string $class_name, ...$args):array {
-
-		if (!class_exists($class_name)) {
-			throw new QueryFatalException("passed incorrect class name");
-		}
-
-		// подготавливаем запрос (очищаем его)
-		[$query, $table] = $this->_formatRawQuery($args);
-
-		if (!inHtml(strtolower($query), "limit") || !inHtml(strtolower($query), "where")) {
-			throw new QueryFatalException("WHERE or LIMIT not found on SQL: {$query}");
-		}
-
-		$this->_debug($query);
-		$raw_result = $this->query($query)->fetchAll();
-
-		if (!is_array($raw_result)) {
-			return [];
-		}
-
-		$raw_result = $this->_afterRead($table, $raw_result);
-
-		$key_column = array_key_first($raw_result[0]);
-		$result     = [];
-
-		foreach ($raw_result as $row) {
-
-			if (isset($result[$row[$key_column]])) {
-				continue;
-			}
-
-			$instance = new $class_name();
-
-			foreach ($row as $column => $value) {
-				$instance->$column = $value;
-			}
-
-			$result[] = $instance;
-		}
-
-		return $result;
 	}
 
 	/**
@@ -533,236 +396,212 @@ class PDODriver extends \PDO {
 		return $names;
 	}
 
-	/**
-	 * Подготавливает insert запрос.
-	 */
-	protected function _formatInsertQuery(string $table, array $ar_set, bool $is_ignore = true, bool $is_delayed = false):string {
+	// форматируем array для вставки
+	// @long
+	protected function _prepareInsertQuery(string $table, array $row_list, bool $is_ignore = true, bool $is_delayed = false, string $update_part = "", array $update_params = []):PDOStatement {
 
-		$ins_key = true;
-		$keys    = "";
+		$columns = "";
 		$values  = "";
-		$qq      = "";
+		$params  = [];
+
+		$columns        = array_keys($row_list[0]);
+		$columns        = array_map(fn ($column) => "`" . $this->_removeQuote($column) . "`", $columns);
+		$columns_string = implode(", ", $columns);
+		$columns_count  = count($columns);
 
 		// выполняем преобразование перед записью данных
-		$ar_set = $this->_beforeWrite($table, $ar_set);
+		$row_list = $this->_beforeWrite($table, $row_list);
 
-		foreach ($ar_set as $ar_query) {
+		foreach ($row_list as $row) {
 
-			foreach ($ar_query as $key => $value) {
-
-				if ($ins_key) {
-					$keys .= "`" . $this->_clearColumnQuotes($key) . "`,";
-				}
-
-				if (is_array($value)) {
-					$value = toJson($value);
-				}
-
-				if ($value instanceof \PdoFuncValue) {
-
-					$param_list = array_map([$this, "_escapeString"], $value->param_list);
-					$param_str  = implode(",", $param_list);
-					$values     .= "{$value->function_name}({$param_str}),";
-					continue;
-				}
-
-				$values .= $this->_escapeString($value) . ",";
+			if (count($row) !== $columns_count) {
+				throw new QueryFatalException("insert row column count dont match");
 			}
-			$values  = substr($values, 0, -1);
-			$ins_key = false;
-			$qq      .= "($values),";
-			$values  = "";
-		}
-		$keys = substr($keys, 0, -1);
 
-		$table   = strpos($table, ".") === false ? "`$table`" : $table;
+			// ищем массивы и превращаем их в JSON
+			$temp = array_map(fn ($value) => is_array($value) ? toJson($value) : $value, $row);
+
+			$values .= $this->_prepareInsertRow($row);
+			$params = array_merge($params, array_values($temp));
+		}
+
 		$extra   = $is_ignore ? "IGNORE" : "";
 		$delayed = $is_delayed ? "delayed" : "";
-		return "INSERT $delayed $extra INTO $table ($keys)  \n VALUES \n" . substr($qq, 0, -1);
+		$values  = substr($values, 0, -1);
+
+		$query = "INSERT $delayed $extra INTO `$table` ($columns_string) VALUES $values";
+
+		if ($update_part !== "") {
+			$query = "INSERT $delayed $extra INTO `$table` ($columns_string) VALUES $values ON DUPLICATE KEY UPDATE $update_part";
+		}
+
+		$prepared_query = $this->prepare($query);
+
+		$last_index = 0;
+
+		// в PDO параметры биндятся указателями
+		foreach ($params as &$param) {
+
+			++$last_index;
+			$prepared_query->bindParam($last_index, $param, is_int($param) ? self::PARAM_INT : self::PARAM_STR);
+		}
+
+		// если есть параметры для апдейта, добавляем в запрос
+		if ($update_params !== []) {
+
+			// в PDO параметры биндятся указателями
+			foreach ($update_params as &$param) {
+
+				++$last_index;
+				$prepared_query->bindParam($last_index, $param, is_int($param) ? self::PARAM_INT : self::PARAM_STR);
+			}
+		}
+
+		return $prepared_query;
+	}
+
+	protected function _prepareInsertRow(array $row):string {
+
+		$token_list = str_repeat("?,", count($row) - 1) . "?";
+
+		return "($token_list),";
 	}
 
 	/**
-	 * Формирует запрос из raw-строки запроса и списка аргументов.
-	 * @throws \BaseFrame\Exception\Gateway\QueryFatalException
+	 * Подготовить запрос
+	 *
+	 * @param string $raw
+	 * @param string $table_name
+	 * @param array  $raw_param_list
+	 *
+	 * @return PDOStatement
+	 * @long
 	 */
-	protected function _formatRawQuery(array $args):array {
+	protected function _getPreparedQuery(string $raw, string $table_name, array $raw_param_list):PDOStatement {
 
-		$result_query = "";
-		$table        = "";
+		$query      = "";
+		$param_list = [];
 
-		$raw_query        = array_shift($args);
-		$raw_query_chunks = preg_split("~(\?[siuap])~u", $raw_query, -1, PREG_SPLIT_DELIM_CAPTURE);
-
-		if (count($args) !== (int) floor(count($raw_query_chunks) / 2)) {
-			throw new QueryFatalException("Number of args doesn't match number of placeholders in [$raw_query]");
-		}
-
-		if (
-			preg_match_all("#SELECT.*?FROM(.+?) #ism", $raw_query, $matches) ||
-			preg_match_all("#DELETE[ ]+FROM(.+?) #ism", $raw_query, $matches) ||
-			preg_match_all("#UPDATE (.+?) #ism", $raw_query, $matches) ||
-			preg_match_all("#INSERT.+?INTO (.+?) #ism", $raw_query, $matches)
-		) {
-			$table = trim($matches[1][0]);
-		}
+		// защита от левака
+		$raw_param_list = array_values($raw_param_list);
 
 		// проверяем что имя таблицы обернуто в косые кавычки `
-		if (!str_starts_with($table, "`") || !str_ends_with($table, "`")) {
-			throw new QueryFatalException("Название таблицы не обернуто в косые кавычки -> ` <-, запрос: {$raw_query}");
+		$pos = strpos($raw, "`?p`");
+		if ($pos === false) {
+			throw new QueryFatalException("cant find table name, query $raw");
+		}
+	    $raw = substr_replace($raw, "`" . $this->_removeQuote($table_name) . "`", $pos, strlen("`?p`"));
+
+		preg_match_all("(\?[siuap])", $raw, $matches);
+		$raw_marker_list = $matches[0];
+		$marker_list     = [];
+		$param_list      = [];
+
+		$param_count  = count($raw_param_list);
+		$marker_count = count($raw_marker_list);
+
+		if ($param_count != $marker_count) {
+			throw new QueryFatalException("Number of args ($param_count) doesn\"t match number of placeholders ($marker_count) in [$raw]");
 		}
 
-		// проверяем, что нигде в запросе не переданы числа (а только все через подготовленные выражения)
-		if (preg_match("#[0-9]+#ism", preg_replace("#`.+?`#ism", "", $raw_query))) {
-			throw new QueryFatalException("В запросе присутствуют цифры, которые не являются частью названия таблицы или полей!\nПРОВЕРЬТЕ: Все названия полей должны быть в косых кавычках, а любые значения только через переданные параметры.\n{$raw_query}");
-		}
+		// проходимся по всем текущим плейсхолдерам и приводим к типам параметры
+		foreach ($raw_marker_list as $index => $marker) {
 
-		// имя таблицы, оно должно быть передано в списке аргументов
-		$table_name = "";
+			if ($marker == "?u") {
+				[$update_query_part, $update_param_list] = $this->_prepareUpdateQueryPart($table_name, $raw_param_list[$index]);
+			}
 
-		// перебираем куски запроса, четные элементы будут плейсхолдерами
-		// для подстановок, нечетные просто частями запроса
-		foreach ($raw_query_chunks as $i => $chunk) {
+			$param = match($marker) {
+				"?s", "?p" => (string) $raw_param_list[$index],
+				"?i"       => (int) $raw_param_list[$index],
+				"?a"       => (array) array_values($raw_param_list[$index]),
+				"?u"       => (array) $update_param_list,
+			};
 
-			if (($i % 2) == 0) {
+			$marker_list[] = match($marker) {
+				"?p"       => $param,
+				"?s", "?i" => "?",
+				"?a"       => count($param) > 0 ? str_repeat("?,", count($param) - 1) . "?" : "NULL",
+				"?u"       => $update_query_part
+			};
 
-				$result_query .= $chunk;
+			// для ?p параметр добавлять не надо
+			if ($marker === "?p") {
 				continue;
 			}
 
-			// достаем следующий аргумент из списка
-			$value = array_shift($args);
-
-			// пытаемся поймать имя таблицы, по идее оно всегда должно быть первым с подстановкой ?p
-			if ($table_name === "" && $chunk === "?p") {
-
-				$table_name = $value;
-			}
-
-			// формируем значение для выражения в запросе
-			$result_query .= match ($chunk) {
-				"?s"    => $this->_escapeString($value),
-				"?i"    => $this->_escapeInt($value),
-				"?a"    => $this->_createIN($value),
-				"?u"    => $this->_formatUpdateArguments($table_name, $value),
-				"?p"    => $value,
-				default => throw new QueryFatalException("запрос содержит неизвестную подстановку $chunk"),
-			};
+			in_array($marker, ["?u", "?a"]) ? $param_list = array_merge($param_list, $param) : $param_list[] = $param;
 		}
 
-		return [$result_query, $table_name];
+		// проверяем, что нигде в запросе не переданы числа (а только все через подготовленные выражения)
+		if (preg_match("#[0-9]+#ism", preg_replace("#`.+?`#ism", "", $raw))) {
+			throw new QueryFatalException("В запросе присуствуют цифры, которые не являются частью названия таблицы или полей!\nПРОВЕРЬТЕ: Все названия полей должны быть в косых ковычках, а любые значения только через переданные параметры.\n{$raw}");
+		}
+
+		// заменяем все плейсхолдерами
+		$query = preg_replace_callback("(\?[siuap])", function(array $_) use (&$marker_list) { return (string) array_shift($marker_list);}, $raw);
+
+		if (!inHtml(strtolower($query), "limit") || !inHtml(strtolower($query), "where")) {
+			throw new QueryFatalException("WHERE or LIMIT not found on SQL: {$query}");
+		}
+
+		// подготавливаем запрос
+		$prepared_query = $this->prepare($query);
+
+		// приклеиваем параметры
+		// указатель нужен, так как PDO приклеивает к запросу параметр именно по указателю
+		foreach($param_list as $index => &$param) {
+			$prepared_query->bindParam($index + 1, $param, is_int($param) ? self::PARAM_INT : self::PARAM_STR);
+		}
+
+		return $prepared_query;
 	}
 
-	/**
-	 * Форматирует выражение с ключами и значениями для update запроса.
-	 * Понимает конструкции вида ["value"=>"3"] и ["value"=>"value + 1"].
-	 */
-	protected function _formatUpdateArguments(string $table, array $set):string {
+	// понимает такие вещи как ["value"=>"value + 1"] в этом случае идет инкремент, если же просто ["value"=>"3"];
+	// @long
+	protected function _prepareUpdateQueryPart(string $table, array $set):array {
 
-		$result = [];
+		$temp = [];
+		$param_list = [];
+
 		[$set] = $this->_beforeWrite($table, [$set]);
 
 		foreach ($set as $k => $v) {
 
 			// чистим название ключа
-			$k = $this->_clearColumnQuotes($k);
+			$k = $this->_removeQuote($k);
 
 			if (is_array($v)) {
-
 				$v = toJson($v);
-			} elseif ($v instanceof \PdoFuncValue) {
 
-				$param_list = array_map([$this, "_escapeString"], $v->param_list);
-				$param_str  = implode(",", $param_list);
-				$result[]   = "`{$k}` = " . "{$v->function_name}({$param_str})";
-
-				continue;
 			} elseif ((inHtml($v, "-") || inHtml($v, "+")) && inHtml($v, $k)) {
 
-				// если это конструкция инкремента / декремента вида value = value + 1
+				// если это контрукция инкремента / декремента вида value = value + 1
 				$gg = str_replace($k, "", $v);
 				$gg = str_replace("-", "", $gg);
-				$gg = (int) trim(str_replace("+", "", $gg));
+				$gg = intval(trim(str_replace("+", "", $gg)));
 
-				// если инкремент/декремент больше 0
+				// если инкремент декремент больше 0
 				if ($gg > 0) {
 
 					if (inHtml($v, "-")) {
-						$result[] = "`{$k}` = `{$k}` - {$gg}";
-					} else {
-						$result[] = "`{$k}` = `{$k}` + {$gg}";
-					}
 
-					continue;
+						$temp[] = "`$k` = `$k` - $gg";
+						continue;
+					} else {
+
+						$temp[] = "`$k` = `$k` + $gg";
+						continue;
+					}
 				}
 			}
 
-			$result[] = "`{$k}` = " . $this->_escapeString($v);
+			//
+			$temp[]       = "`{$k}` =  ?";
+			$param_list[] = $v;
 		}
 
-		return implode(", ", $result);
-	}
-
-	/**
-	 * Экранирует строковый параметр.
-	 */
-	protected function _escapeString(string $value = null):string {
-
-		if ($value === null) {
-			return "NULL";
-		}
-
-		return $this->quote($value);
-	}
-
-	/**
-	 * Экранирует целочисленное значение.
-	 * @throws \BaseFrame\Exception\Gateway\QueryFatalException
-	 */
-	protected function _escapeInt($value):int {
-
-		if ($value === null) {
-			return "NULL";
-		}
-
-		if (!is_numeric($value)) {
-			throw new QueryFatalException("Integer (?i) placeholder expects numeric value, " . gettype($value) . " given");
-		}
-
-		if (is_float($value)) {
-			return number_format($value, 0, ".", "");
-		}
-
-		return (int) $value;
-	}
-
-	/**
-	 * Удаляет все кавычки из строки.
-	 */
-	protected function _clearColumnQuotes(string $value):string {
-
-		return trim($value, "\"'`");
-	}
-
-	/**
-	 * Создает часть запроса из IN значений.
-	 */
-	protected function _createIN(array $data):string {
-
-		// шляпа какая-то, но раз есть, то трогать не буду
-		if (!$data) {
-			return "NULL";
-		}
-
-		$query = "";
-		$comma = "";
-
-		foreach ($data as $value) {
-
-			$query .= $comma . $this->_escapeString($value);
-			$comma = ",";
-		}
-
-		return $query;
+		return [implode(", ", $temp), $param_list];
 	}
 
 	/**
@@ -778,4 +617,11 @@ class PDODriver extends \PDO {
 			debug($query);
 		}
 	}
+
+	// удаляем кавычки из текста (нужно для названия столбцов)
+	protected function _removeQuote(string $value):string {
+
+		return str_replace(["\"", "`", "'"], "", $value);
+	}
 }
+
