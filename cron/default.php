@@ -508,7 +508,7 @@ class Cron_Default {
 
 	/**
 	 * Получаем lock файл, в котором крон хранит свой pid
-	 *
+	 * 
 	 * @return File
 	 */
 	protected function _getLockFile(string $bot_id = "bot0"):File {
