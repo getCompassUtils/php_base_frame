@@ -194,7 +194,7 @@ class PDODriver extends \PDO {
 
 		// подготавливаем запрос (очищаем его)
 		$prepared_query = $this->_getPreparedQuery($query, $table, $params);
-
+		
 		$this->_debug($query);
 		$prepared_query->execute();
 
@@ -227,7 +227,7 @@ class PDODriver extends \PDO {
 		$this->_debug($query);
 		$prepared_query->execute();
 		$result = $prepared_query->fetch();
-
+		
 		if (!is_array($result)) {
 			return [];
 		}
@@ -248,7 +248,7 @@ class PDODriver extends \PDO {
 		$this->_debug($query);
 		$prepared_query->execute();
 		$result = $prepared_query->fetchAll();
-
+		
 		if (!is_array($result)) {
 			return [];
 		}
@@ -407,7 +407,7 @@ class PDODriver extends \PDO {
 		$columns        = array_keys($row_list[0]);
 		$columns        = array_map(fn ($column) => "`" . $this->_removeQuote($column) . "`", $columns);
 		$columns_string = implode(", ", $columns);
-		$columns_count  = count($columns);
+		$columns_count  = count($columns);		
 
 		// выполняем преобразование перед записью данных
 		$row_list = $this->_beforeWrite($table, $row_list);
@@ -430,7 +430,7 @@ class PDODriver extends \PDO {
 		$values  = substr($values, 0, -1);
 
 		$query = "INSERT $delayed $extra INTO `$table` ($columns_string) VALUES $values";
-
+		
 		if ($update_part !== "") {
 			$query = "INSERT $delayed $extra INTO `$table` ($columns_string) VALUES $values ON DUPLICATE KEY UPDATE $update_part";
 		}
@@ -446,7 +446,7 @@ class PDODriver extends \PDO {
 			$prepared_query->bindParam($last_index, $param, is_int($param) ? self::PARAM_INT : self::PARAM_STR);
 		}
 
-		// если есть параметры для апдейта, добавляем в запрос
+		// если есть параметры для апдейта, добавляем в запрос	
 		if ($update_params !== []) {
 
 			// в PDO параметры биндятся указателями
@@ -461,7 +461,7 @@ class PDODriver extends \PDO {
 	}
 
 	protected function _prepareInsertRow(array $row):string {
-
+		
 		$token_list = str_repeat("?,", count($row) - 1) . "?";
 
 		return "($token_list),";
@@ -469,11 +469,11 @@ class PDODriver extends \PDO {
 
 	/**
 	 * Подготовить запрос
-	 *
+	 * 
 	 * @param string $raw
 	 * @param string $table_name
 	 * @param array  $raw_param_list
-	 *
+	 * 
 	 * @return PDOStatement
 	 * @long
 	 */
@@ -517,11 +517,11 @@ class PDODriver extends \PDO {
 				"?a"       => (array) array_values($raw_param_list[$index]),
 				"?u"       => (array) $update_param_list,
 			};
-
+			
 			$marker_list[] = match($marker) {
 				"?p"       => $param,
 				"?s", "?i" => "?",
-				"?a"       => count($param) > 0 ? str_repeat("?,", count($param) - 1) . "?" : "NULL",
+				"?a"       => count($param) > 0 ? str_repeat("?,", count($param) - 1) . "?" : "NULL",	
 				"?u"       => $update_query_part
 			};
 
@@ -540,7 +540,7 @@ class PDODriver extends \PDO {
 
 		// заменяем все плейсхолдерами
 		$query = preg_replace_callback("(\?[siuap])", function(array $_) use (&$marker_list) { return (string) array_shift($marker_list);}, $raw);
-
+		
 		if (!inHtml(strtolower($query), "limit") || !inHtml(strtolower($query), "where")) {
 			throw new QueryFatalException("WHERE or LIMIT not found on SQL: {$query}");
 		}
@@ -622,6 +622,6 @@ class PDODriver extends \PDO {
 	protected function _removeQuote(string $value):string {
 
 		return str_replace(["\"", "`", "'"], "", $value);
-	}
+	}	
 }
 
