@@ -154,15 +154,26 @@ class Cron_Default {
 	// запуск - один раз
 	public function start():void {
 
+		if (!static::_isNeedWork()) {
+			return;
+		}
+
 		// перед запуском проверяем, если есть просто "мягко" выходим, не запуская цикл
 		if ($this->_isRun()) {
 			return;
 		}
 
 		$this->_begin();
+
 		$this->write(sprintf("CRON START, END AT: %s", date(DATE_FORMAT_FULL_S, $this->end_at)));
 
 		while ($this->_isCanWorkByTime()) {
+
+			if (!static::_isNeedWork()) {
+
+				$this->write(sprintf("NO NEED TO CONTINUE WORKING"));
+				break;
+			}
 
 			if ($this->bot_type == "consumer") {
 
@@ -178,6 +189,16 @@ class Cron_Default {
 
 		$this->write(sprintf("CRON END BY TIME (exceed: %ds)...", time() - $this->end_at));
 		$this->_done();
+	}
+
+	// нужно ли запускать работу крона
+	protected static function _isNeedWork():bool {
+
+		if (\BaseFrame\Server\ServerProvider::isReserveServer()) {
+			return false;
+		}
+
+		return true;
 	}
 
 	/**

@@ -94,4 +94,7 @@ const FILE_SOURCE_AVATAR_CDN   = 21; // дефолтный файл аватар
 const FILE_SOURCE_VIDEO_CDN  	 = 24; // дефолтный файл видео на ноде CDN
 const FILE_SOURCE_DOCUMENT_CDN = 26; // дефолтный файл документ на ноде CDN
 
+// путь в конфиг-файлам пивота
+const DOMINO_CONFIG_PATH = "/pivot_config/";
+
 // @formatter:on

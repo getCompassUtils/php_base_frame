@@ -182,6 +182,60 @@ class ServerProvider {
 		}
 	}
 
+	/**
+	 * получаем лейбл сервиса сервера
+	 *
+	 * @return string
+	 * @throws \BaseFrame\Exception\Domain\ReturnFatalException
+	 */
+	public static function serviceLabel():string {
+
+		return ServerHandler::instance()->serviceLabel();
+	}
+
+	/**
+	 * Является ли сервер резервным
+	 *
+	 * @return bool
+	 * @throws \BaseFrame\Exception\Domain\ReturnFatalException
+	 */
+	public static function isReserveServer():bool {
+
+		if (!\BaseFrame\Server\ServerProvider::isOnPremise()) {
+			return false;
+		}
+
+		$service_label = \BaseFrame\Server\ServerProvider::serviceLabel();
+		if (mb_strlen($service_label) == 0) {
+			return false;
+		}
+
+		if (!defined("COMPANIES_RELATIONSHIP_FILE") || mb_strlen(COMPANIES_RELATIONSHIP_FILE) == 0) {
+			return false;
+		}
+
+		// инициализируем файл конфига компаний резервных серверов
+		$companies_relationship_file = \BaseFrame\System\File::init(sprintf("%s", DOMINO_CONFIG_PATH), COMPANIES_RELATIONSHIP_FILE);
+
+		// если конфиг отсутствует
+		if (!$companies_relationship_file->isExists()) {
+			return false;
+		}
+
+		$companies_relationship_config = fromJson($companies_relationship_file->read());
+
+		// получаем флаг master для service_label
+		if (!isset($companies_relationship_config[$service_label]["master"])) {
+			return true;
+		}
+
+		if (false == $companies_relationship_config[$service_label]["master"]) {
+			return true;
+		}
+
+		return false;
+	}
+
 	// ---------------------------------------------------
 	// PROTECTED
 	// ---------------------------------------------------
