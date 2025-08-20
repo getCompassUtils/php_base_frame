@@ -422,6 +422,9 @@ class Manticore extends \PDO {
 		$value = str_replace("'", "", $value);
 		$value = str_replace("`", "", $value);
 
+		// если попался кластер:таблица, то оборачиваем их в кавчки
+		$value = str_replace(":", "`:`", $value);
+
 		if (mb_strlen($value) === 0) {
 			throw new Exception\ExecutionException("значение для подстановки ключа не может быть пустым");
 		}

@@ -51,13 +51,14 @@ class ServerHandler {
 
 	private static ServerHandler|null $_instance = null;
 	private array                     $_server_tag_list;
+	private string                    $_service_label;
 
 	/**
 	 * Server constructor.
 	 *
 	 * @throws ReturnFatalException
 	 */
-	private function __construct(array $server_tag_list) {
+	private function __construct(array $server_tag_list, string $service_label) {
 
 		if (count($server_tag_list) < 2) {
 			throw new ReturnFatalException("incorrect server tag list!");
@@ -76,19 +77,20 @@ class ServerHandler {
 		}
 
 		$this->_server_tag_list = $server_tag_list;
+		$this->_service_label   = $service_label;
 	}
 
 	/**
 	 * инициализируем синглтон
 	 *
 	 */
-	public static function init(array $server_tag_list):static {
+	public static function init(array $server_tag_list, string $service_label):static {
 
 		if (!is_null(static::$_instance)) {
 			return static::$_instance;
 		}
 
-		return static::$_instance = new static($server_tag_list);
+		return static::$_instance = new static($server_tag_list, $service_label);
 	}
 
 	/**
@@ -110,5 +112,14 @@ class ServerHandler {
 	public function tagList():array {
 
 		return $this->_server_tag_list;
+	}
+
+	/**
+	 * получаем лейбл сервиса сервера
+	 *
+	 */
+	public function serviceLabel():string {
+
+		return $this->_service_label;
 	}
 }
