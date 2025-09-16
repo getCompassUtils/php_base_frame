@@ -19,6 +19,7 @@ class PathHandler {
 	private string                  $_log_error_mysql_path;
 	private string                  $_log_admin_path;
 	private string                  $_api_path;
+	private string 			  $_tmp_path;
 
 	/**
 	 * Path constructor.
@@ -26,7 +27,7 @@ class PathHandler {
 	 * @throws ReturnFatalException
 	 */
 	private function __construct(string $root_path, string $logs_path, string $config_log_cron_path, string $config_log_exception_path, string $log_error_php_path,
-					     string $log_critical_php_exception_path, string $log_error_mysql_path, string $log_admin_path, string $api_path) {
+					     string $log_critical_php_exception_path, string $log_error_mysql_path, string $log_admin_path, string $api_path, string $tmp_path = "/tmp/") {
 
 		if (mb_strlen($root_path) < 1 || mb_strlen($logs_path) < 1 || mb_strlen($config_log_cron_path) < 1
 			|| mb_strlen($config_log_exception_path) < 1 || mb_strlen($log_error_php_path) < 1
@@ -44,6 +45,7 @@ class PathHandler {
 		$this->_log_error_mysql_path            = $log_error_mysql_path;
 		$this->_log_admin_path                  = $log_admin_path;
 		$this->_api_path                        = $api_path;
+		$this->_tmp_path				    = $tmp_path;
 	}
 
 	/**
@@ -154,5 +156,14 @@ class PathHandler {
 	public function api():string {
 
 		return $this->_api_path;
+	}
+
+	/**
+	 * получаем tmp_path
+	 *
+	 */
+	public function tmp():string {
+
+		return $this->_tmp_path;
 	}
 }

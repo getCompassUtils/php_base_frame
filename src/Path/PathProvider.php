@@ -94,4 +94,13 @@ class PathProvider {
 
 		return PathHandler::instance()->api();
 	}
+
+	/**
+	 * получаем tmp_path
+	 *
+	 */
+	public static function tmp():string {
+
+		return PathHandler::instance()->tmp();
+	}
 }

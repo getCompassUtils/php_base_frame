@@ -24,6 +24,9 @@ abstract class Base {
 	// методы, доступ к которым ограничен без оплаты мест
 	public const ALLOWED_WITH_PAYMENT_ONLY_METHODS = [];
 
+	// методы, в которых мы должны фильтровать контент
+	public const NEED_FILTER_CONTENT_METHODS = [];
+
 	// список запрещенных методов по ролям, пример:
 	// [
 	//	ROLE_GUEST => [
