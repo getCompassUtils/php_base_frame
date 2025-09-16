@@ -2,6 +2,8 @@
 
 namespace BaseFrame\Server;
 
+use BaseFrame\Exception\Domain\ReturnFatalException;
+
 /**
  * Класс-обертка для работы с серверами
  */
@@ -120,6 +122,21 @@ class ServerProvider {
 	public static function isIntegration():bool {
 
 		if (self::_hasTag(ServerHandler::INTEGRATION_TAG)) {
+			return true;
+		}
+
+		return false;
+	}
+
+	/**
+	 * проверяем, что это on-premise сервер из yandex cloud marketplace
+	 *
+	 * @return bool
+	 * @throws ReturnFatalException
+	 */
+	public static function isYandexCloudMarketplace():bool {
+
+		if (self::isOnPremise() && self::_hasTag(ServerHandler::YANDEX_CLOUD_MARKETPLACE_TAG)) {
 			return true;
 		}
 
@@ -246,7 +263,7 @@ class ServerProvider {
 	 * @param string $tag
 	 *
 	 * @return bool
-	 * @throws \BaseFrame\Exception\Domain\ReturnFatalException
+	 * @throws ReturnFatalException
 	 */
 	protected static function _hasTag(string $tag):bool {
 
