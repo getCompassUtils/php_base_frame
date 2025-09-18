@@ -27,8 +27,9 @@ class ServerHandler {
 	/**
 	 * кастомные теги
 	 */
-	public const LOCAL_TAG       = "local";
-	public const INTEGRATION_TAG = "integration";
+	public const LOCAL_TAG                    = "local";
+	public const INTEGRATION_TAG              = "integration";
+	public const YANDEX_CLOUD_MARKETPLACE_TAG = "yandex_cloud_marketplace";
 
 	/**
 	 * группа по типу окружения
