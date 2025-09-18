@@ -88,7 +88,9 @@ class File {
      */
     public function delete():void {
 
-        unlink($this->_file_path);
+	    if (file_exists($this->_file_path)) {
+		    unlink($this->_file_path);
+	    }
     }
 
     /**
