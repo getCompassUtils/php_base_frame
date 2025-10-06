@@ -164,7 +164,6 @@ class Cron_Default {
 		}
 
 		$this->_begin();
-
 		$this->write(sprintf("CRON START, END AT: %s", date(DATE_FORMAT_FULL_S, $this->end_at)));
 
 		while ($this->_isCanWorkByTime()) {
@@ -529,7 +528,7 @@ class Cron_Default {
 
 	/**
 	 * Получаем lock файл, в котором крон хранит свой pid
-	 * 
+	 *
 	 * @return File
 	 */
 	protected function _getLockFile(string $bot_id = "bot0"):File {

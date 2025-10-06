@@ -1176,11 +1176,11 @@ function obfuscateWords(string $string, int $visible_count = 1):string {
 	$string_length = mb_strlen($string);
 
 	$delimiter = " ";
-	$words = explode($delimiter, $string);
+	$words     = explode($delimiter, $string);
 
 	$output = (string) array_reduce($words, static function(string $output, string $word) use ($visible_count, $delimiter) {
 
-		$length = mb_strlen($word);
+		$length       = mb_strlen($word);
 		$hidden_count = $length - ($visible_count * 2);
 
 		return $output . mb_substr($word, 0, $visible_count)
@@ -1357,6 +1357,22 @@ function removeEmojiFromText(string $text):string {
 
 	// убираем из текста сообщения shortname эмодзи
 	return str_replace($shortname_emoji_list, "", $text);
+}
+
+/**
+ * Удаляем не utf8 символы перед записью в mysql
+ *
+ * @param string $text
+ *
+ * @return string
+ */
+function cleanForMysqlUtf8(string $text):string {
+
+	// убираем полностью битые последовательности
+	$text = iconv("UTF-8", "UTF-8//IGNORE", $text);
+
+	// вырезаем «легитимные» 4-байтные символы (MySQL-utf8 не поддерживает)
+	return preg_replace("/[\x{10000}-\x{10FFFF}]/u", "", $text);
 }
 
 /**
