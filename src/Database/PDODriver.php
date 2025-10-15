@@ -152,7 +152,7 @@ class PDODriver extends \PDO {
 	 *
 	 * @throws \BaseFrame\Exception\Gateway\QueryFatalException
 	 */
-	public function insertOrUpdate(string $table, array $insert, array $update = null):int {
+	public function insertOrUpdate(string $table, array $insert, ?array $update = null):int {
 
 		if (!is_array($insert) || count($insert) < 1) {
 			throw new QueryFatalException("INSERT DATA is empty!");

@@ -453,7 +453,7 @@ class Manticore extends \PDO {
 	 * @return string
 	 * @throws Exception\ExecutionException
 	 */
-	protected function _prepareStringArgument(string $value = null):string {
+	protected function _prepareStringArgument(?string $value = null):string {
 
 		if ($value === null) {
 			return "NULL";

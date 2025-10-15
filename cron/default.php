@@ -319,7 +319,7 @@ class Cron_Default {
 
 		// ждем сообщение
 		// @mixed
-		$this->_getBusInstance($this::_RABBIT_KEY)->waitMessages($this->getQueueName(), $this::_EXCHANGE_NAME, function($message):string {
+		$this->_getBusInstance($this::_RABBIT_KEY)->waitMessages($this->getQueueName(), $this::_EXCHANGE_NAME, function(string|array $message):string {
 
 			// проверяем – если последний doWork был слишком давно – прямо здесь очищаем коннекты ко всему кроме рэббита перед doWork
 			if ($this->last_worked_at > 0 && (time() - $this->last_worked_at) > $this->break_after_left_at) {
@@ -395,7 +395,7 @@ class Cron_Default {
 	}
 
 	// метод для того чтобы записать в лог
-	public function write(string $message, string $bot_id = null):void {
+	public function write(string $message, ?string $bot_id = null):void {
 
 		$this->say($message);
 		if ($bot_id == null) {
@@ -506,7 +506,7 @@ class Cron_Default {
 	}
 
 	// получаем pid крона
-	protected function _getPid(File $file = null):int {
+	protected function _getPid(?File $file = null):int {
 
 		if ($file == null) {
 			$file = $this->_getLockFile($this->bot_id);

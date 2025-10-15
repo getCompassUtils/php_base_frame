@@ -33,10 +33,9 @@
 	],
 	"require": {
 		"backend_compass_dev_2/php_analytic_utils": "*",
-		"php-amqplib/php-amqplib": "v3.1.2",
 		"phpseclib/phpseclib": "3.0.42",
-		"google/protobuf": "v3.23.0",
-		"grpc/grpc": "v1.52.0",
+		"php-amqplib/php-amqplib": "v3.7.3",
+		"grpc/grpc": "1.57.0",
 		"ext-posix": "*",
 		"ext-mbstring": "*",
 		"ext-openssl": "*",
@@ -49,6 +48,7 @@
 		"ext-grpc": "*",
 		"ext-geoip": "*",
 		"ext-memcache": "*",
-		"ext-bcmath": "*"
+		"ext-bcmath": "*",
+		"ext-protobuf": "*"
 	}
 }

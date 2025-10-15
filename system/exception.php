@@ -116,7 +116,7 @@ class blockException extends baseException {
 	 * @param int            $code
 	 * @param Throwable|null $previous
 	 */
-	public function __construct(string $message = "", int $expire = 0, int $code = 0, Throwable $previous = null) {
+	public function __construct(string $message = "", int $expire = 0, int $code = 0, ?Throwable $previous = null) {
 
 		$this->expire = $expire;
 		parent::__construct($message, $code, $previous);
@@ -154,7 +154,7 @@ class cs_ExceptionWithIndex extends Exception {
 
 	protected int $_index;
 
-	public function __construct(int $index = 0, $message = "", $code = 0, Throwable $previous = null) {
+	public function __construct(int $index = 0, $message = "", $code = 0, ?Throwable $previous = null) {
 
 		$this->_index = $index;
 		parent::__construct($message, $code, $previous);
@@ -279,7 +279,7 @@ class cs_SocketRequestIsFailed extends Exception {
 	 * @param int            $code     [optional] The Exception code.
 	 * @param Throwable|null $previous [optional] The previous throwable used for the exception chaining.
 	 */
-	public function __construct(int $http_status_code, string $url, array $response, string $message = "", int $code = 0, Throwable|null $previous = null) {
+	public function __construct(int $http_status_code, string $url, array $response, string $message = "", int $code = 0, ?Throwable $previous = null) {
 
 		$this->_http_status_code = $http_status_code;
 		$this->_url              = $url;
@@ -398,9 +398,6 @@ class baseExceptionHandler {
 		// записываем ошибку в лог
 		self::writeExceptionToLogs($exception, $message, $is_error);
 
-		// добавляем response_code к ответу
-		http_response_code($http_code);
-
 		// отображаем ошибку
 		self::_showError($http_code, $exception->getMessage());
 
@@ -505,6 +502,9 @@ class baseExceptionHandler {
 		if (isCLi()) {
 			return;
 		}
+
+		// добавляем response_code к ответу
+		http_response_code($http_code);
 
 		// если не нужно показывать текст ошибки
 		if (!ErrorProvider::display()) {
