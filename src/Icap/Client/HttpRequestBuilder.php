@@ -95,7 +95,7 @@ class HttpRequestBuilder {
 	 * @return $this
 	 * @throws \Random\RandomException
 	 */
-	public function bodyFromMultipartFile(string $fieldName, string $filePath, string $fileName = null):self {
+	public function bodyFromMultipartFile(string $fieldName, string $filePath, ?string $fileName = null):self {
 
 		$boundary                           = "----CompassFormBoundary" . bin2hex(random_bytes(16));
 		$this->headers["Content-Type"]      = "multipart/form-data; boundary=" . $boundary;

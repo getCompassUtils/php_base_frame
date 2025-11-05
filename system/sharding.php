@@ -85,7 +85,7 @@ class sharding {
 	}
 
 	// функция для создания соединения с MySQL сервером
-	public static function pdoConnect(string $host, string $user, string $password, bool $ssl, string $db = null):myPDObasic {
+	public static function pdoConnect(string $host, string $user, string $password, bool $ssl, ?string $db = null):myPDObasic {
 
 		// опции подключения
 		$opt = [
@@ -332,7 +332,7 @@ class myPDObasic extends \BaseFrame\Database\PDODriver {
 	}
 
 	// пытаемся вставить данные в таблицу, если есть - изменяем
-	public function insertOrUpdate(string $table, array $insert, array $update = null):int {
+	public function insertOrUpdate(string $table, array $insert, ?array $update = null):int {
 
 		if (!is_array($insert) || count($insert) < 1) {
 			$this->_throwError("INSERT DATA is empty!");

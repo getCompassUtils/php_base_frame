@@ -61,7 +61,7 @@ class UserAgent {
 	 *
 	 * @return string
 	 */
-	public static function getPlatform(string $user_agent = null):string {
+	public static function getPlatform(?string $user_agent = null):string {
 
 		// если работаем из консоли и не передали ua - возвращаем платформу other
 		if (isCLi() && is_null($user_agent)) {
@@ -92,7 +92,7 @@ class UserAgent {
 	 *
 	 * @return string
 	 */
-	public static function getAppVersion(string $user_agent = null):string {
+	public static function getAppVersion(?string $user_agent = null):string {
 
 		if (is_null($user_agent)) {
 			$user_agent = self::getUserAgent();
@@ -144,7 +144,7 @@ class UserAgent {
 	 *
 	 * @return string
 	 */
-	public static function getAppName(string $user_agent = null):string {
+	public static function getAppName(?string $user_agent = null):string {
 
 		if (is_null($user_agent)) {
 			$user_agent = self::getUserAgent();
@@ -168,7 +168,7 @@ class UserAgent {
 		"platform"    => "string",
 		"user_agent"  => "null|string",
 	])]
-	public static function getFullInfo(string $user_agent = null):array {
+	public static function getFullInfo(?string $user_agent = null):array {
 
 		if (is_null($user_agent)) {
 			$user_agent = self::getUserAgent();
@@ -199,7 +199,7 @@ class UserAgent {
 	 * @return void
 	 * @throws AppNameNotFoundException
 	 */
-	public static function assertAppNameAvailable(string $app_name = null):void {
+	public static function assertAppNameAvailable(?string $app_name = null):void {
 
 		// если не передали имя приложения - берем его из user-agent
 		if (is_null($app_name)) {

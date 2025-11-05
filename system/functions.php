@@ -80,7 +80,7 @@ function cookie(string $field, $default = null) {
  *
  * @return int
  */
-function limit(int $value, int $min = null, int $max = null):int {
+function limit(int $value, ?int $min = null, ?int $max = null):int {
 
 	$value = intval($value);
 	if ($min !== null && $value < $min) {
@@ -412,7 +412,7 @@ function console():void {
  *
  * @return int
  */
-function yearNum(int $time = null):int {
+function yearNum(?int $time = null):int {
 
 	if ($time === null) {
 		$time = time();
@@ -428,7 +428,7 @@ function yearNum(int $time = null):int {
  *
  * @return int
  */
-function weekNum(int $time = null):int {
+function weekNum(?int $time = null):int {
 
 	if ($time == null) {
 		$time = time();
@@ -444,7 +444,7 @@ function weekNum(int $time = null):int {
  *
  * @return int
  */
-function dayNum(int $time = null):int {
+function dayNum(?int $time = null):int {
 
 	if ($time == null) {
 		$time = time();
@@ -460,7 +460,7 @@ function dayNum(int $time = null):int {
  *
  * @return int
  */
-function dayStart(int $time = null):int {
+function dayStart(?int $time = null):int {
 
 	if ($time == null) {
 		$time = time();
@@ -476,7 +476,7 @@ function dayStart(int $time = null):int {
  *
  * @return int
  */
-function dayStartOnGreenwich(int $time = null):int {
+function dayStartOnGreenwich(?int $time = null):int {
 
 	if ($time === null) {
 		$time = time();
@@ -492,7 +492,7 @@ function dayStartOnGreenwich(int $time = null):int {
  *
  * @return int
  */
-function weekStart(int $time = null):int {
+function weekStart(?int $time = null):int {
 
 	if ($time == null) {
 		$time = time();
@@ -522,7 +522,7 @@ function weekStartOnGreenwich():int {
  *
  * @return int
  */
-function monthStart(int $time = null):int {
+function monthStart(?int $time = null):int {
 
 	if ($time == null) {
 		$time = time();
@@ -539,7 +539,7 @@ function monthStart(int $time = null):int {
  *
  * @return int
  */
-function monthStartOnGreenwich(int $time = null):int {
+function monthStartOnGreenwich(?int $time = null):int {
 
 	if ($time === null) {
 		$time = time();
@@ -557,7 +557,7 @@ function monthStartOnGreenwich(int $time = null):int {
  *
  * @return int
  */
-function monthEndOnGreenwich(int $time = null):int {
+function monthEndOnGreenwich(?int $time = null):int {
 
 	if ($time === null) {
 		$time = time();
@@ -575,7 +575,7 @@ function monthEndOnGreenwich(int $time = null):int {
  *
  * @return int
  */
-function minuteStart(int $time = null):int {
+function minuteStart(?int $time = null):int {
 
 	if ($time == null) {
 		$time = time();
@@ -591,7 +591,7 @@ function minuteStart(int $time = null):int {
  *
  * @return int
  */
-function hourStart(int $time = null):int {
+function hourStart(?int $time = null):int {
 
 	if ($time == null) {
 		$time = time();
@@ -666,7 +666,7 @@ function getPeriodByMonthStartAt(int $month_start_at):array {
  *
  * @return int
  */
-function dayEnd(int $time = null):int {
+function dayEnd(?int $time = null):int {
 
 	if ($time === null) {
 		$time = time();
@@ -682,7 +682,7 @@ function dayEnd(int $time = null):int {
  *
  * @return int
  */
-function dayEndOnGreenwich(int $time = null):int {
+function dayEndOnGreenwich(?int $time = null):int {
 
 	if ($time === null) {
 		$time = time();
@@ -698,7 +698,7 @@ function dayEndOnGreenwich(int $time = null):int {
  *
  * @return int
  */
-function monthEnd(int $time = null):int {
+function monthEnd(?int $time = null):int {
 
 	if ($time === null) {
 		$time = time();
@@ -716,7 +716,7 @@ function monthEnd(int $time = null):int {
  *
  * @return string
  */
-function getWeekDayString(int $time = null):string {
+function getWeekDayString(?int $time = null):string {
 
 	if ($time === null) {
 		$time = time();
@@ -1176,11 +1176,11 @@ function obfuscateWords(string $string, int $visible_count = 1):string {
 	$string_length = mb_strlen($string);
 
 	$delimiter = " ";
-	$words = explode($delimiter, $string);
+	$words     = explode($delimiter, $string);
 
 	$output = (string) array_reduce($words, static function(string $output, string $word) use ($visible_count, $delimiter) {
 
-		$length = mb_strlen($word);
+		$length       = mb_strlen($word);
 		$hidden_count = $length - ($visible_count * 2);
 
 		return $output . mb_substr($word, 0, $visible_count)
@@ -1357,6 +1357,22 @@ function removeEmojiFromText(string $text):string {
 
 	// убираем из текста сообщения shortname эмодзи
 	return str_replace($shortname_emoji_list, "", $text);
+}
+
+/**
+ * Удаляем не utf8 символы перед записью в mysql
+ *
+ * @param string $text
+ *
+ * @return string
+ */
+function cleanForMysqlUtf8(string $text):string {
+
+	// убираем полностью битые последовательности
+	$text = iconv("UTF-8", "UTF-8//IGNORE", $text);
+
+	// вырезаем «легитимные» 4-байтные символы (MySQL-utf8 не поддерживает)
+	return preg_replace("/[\x{10000}-\x{10FFFF}]/u", "", $text);
 }
 
 /**
@@ -2206,7 +2222,7 @@ function makeCliColorText(string $text, int $color_code = 0, bool $is_underline 
 }
 
 // подтверждение для консоли
-function confirmCliFlow(string $message = null):void {
+function confirmCliFlow(?string $message = null):void {
 
 	if (!is_null($message)) {
 		console($message);
@@ -2465,16 +2481,4 @@ function traceError(Throwable $e, mixed $seen = null):string {
 	}
 
 	return $result;
-}
-
-/**
- * Сделать первую букву заглавной
- *
- * @param string $value
- *
- * @return string
- */
-function mb_ucfirst(string $value) {
-
-	return mb_strtoupper(mb_substr($value, 0, 1)) . mb_substr($value, 1);
 }
