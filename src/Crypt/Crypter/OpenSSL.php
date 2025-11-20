@@ -57,6 +57,13 @@ class OpenSSL implements \BaseFrame\Crypt\Crypter {
 
 		$this->_is_initialized = true;
 
+		// для скриптов добавляем чтение ключа из файла
+		if (isCli() && file_exists("/run/secrets/compass_database_encryption_secret_key")) {
+
+			$secret_key = file_get_contents("/run/secrets/compass_database_encryption_secret_key");
+			putenv("DATABASE_CRYPT_SECRET_KEY={$secret_key}");
+		}
+
 		if (!is_null($this->_init_fn)) {
 			$this->_init_fn->call($this);
 		}
