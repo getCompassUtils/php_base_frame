@@ -30,6 +30,7 @@ class ServerHandler {
 	public const LOCAL_TAG                    = "local";
 	public const INTEGRATION_TAG              = "integration";
 	public const YANDEX_CLOUD_MARKETPLACE_TAG = "yandex_cloud_marketplace";
+	public const LOCAL_LICENSE_TAG            = "local_license";
 
 	/**
 	 * группа по типу окружения

@@ -20,6 +20,7 @@ class ServerProvider {
 	 * проверяем, что это тестовый сервер
 	 *
 	 * @return bool
+	 * @throws ReturnFatalException
 	 */
 	public static function isDev():bool {
 
@@ -34,6 +35,7 @@ class ServerProvider {
 	 * проверяем, что это CI сервер
 	 *
 	 * @return bool
+	 * @throws ReturnFatalException
 	 */
 	public static function isCi():bool {
 
@@ -48,6 +50,7 @@ class ServerProvider {
 	 * проверяем, что это Stage сервер
 	 *
 	 * @return bool
+	 * @throws ReturnFatalException
 	 */
 	public static function isStage():bool {
 
@@ -62,6 +65,7 @@ class ServerProvider {
 	 * проверяем, что это on-premise сервер
 	 *
 	 * @return bool
+	 * @throws ReturnFatalException
 	 */
 	public static function isOnPremise():bool {
 
@@ -76,6 +80,7 @@ class ServerProvider {
 	 * проверяем, что это saas сервер
 	 *
 	 * @return bool
+	 * @throws ReturnFatalException
 	 */
 	public static function isSaas():bool {
 
@@ -90,6 +95,7 @@ class ServerProvider {
 	 * проверяем, что это production сервер
 	 *
 	 * @return bool
+	 * @throws ReturnFatalException
 	 */
 	public static function isProduction():bool {
 
@@ -104,6 +110,7 @@ class ServerProvider {
 	 * проверяем, что это локальный сервер
 	 *
 	 * @return bool
+	 * @throws ReturnFatalException
 	 */
 	public static function isLocal():bool {
 
@@ -118,6 +125,7 @@ class ServerProvider {
 	 * проверяем, что сервер с интеграцией
 	 *
 	 * @return bool
+	 * @throws ReturnFatalException
 	 */
 	public static function isIntegration():bool {
 
@@ -144,9 +152,25 @@ class ServerProvider {
 	}
 
 	/**
+	 * проверяем, что это on-premise сервер с локальной лицензией
+	 *
+	 * @return bool
+	 * @throws ReturnFatalException
+	 */
+	public static function isLocalLicense():bool {
+
+		if (self::isOnPremise() && self::_hasTag(ServerHandler::LOCAL_LICENSE_TAG)) {
+			return true;
+		}
+
+		return false;
+	}
+
+	/**
 	 * проверяем, что это master сервер
 	 *
 	 * @return bool
+	 * @throws ReturnFatalException
 	 */
 	public static function isMaster():bool {
 
@@ -161,6 +185,7 @@ class ServerProvider {
 	 * проверяем, что это тестовое окружение
 	 *
 	 * @return bool
+	 * @throws ReturnFatalException
 	 */
 	public static function isTest():bool {
 
@@ -175,7 +200,8 @@ class ServerProvider {
 	 * Проверка запущено ли на тестовом сервере
 	 *
 	 * @return void
-	 * @throws \parseException
+	 * @throws ReturnFatalException
+	 * @throws \ParseException
 	 */
 	public static function assertTest():void {
 
@@ -189,6 +215,7 @@ class ServerProvider {
 	 * Проверка запущено ли на продакшене
 	 *
 	 * @return void
+	 * @throws ReturnFatalException
 	 * @throws \parseException
 	 */
 	public static function assertProduction():void {
