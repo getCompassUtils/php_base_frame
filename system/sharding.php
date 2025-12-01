@@ -3,6 +3,7 @@
 use BaseFrame\Exception\Domain\ReturnFatalException;
 use BaseFrame\Exception\Gateway\QueryFatalException;
 use BaseFrame\Conf\ConfProvider;
+use BaseFrame\Server\ServerProvider;
 
 /**
  * класс управления базами данными и подключениями
@@ -248,6 +249,10 @@ class myPDObasic extends \BaseFrame\Database\PDODriver {
 		if (!in_array($isolation_level, $isolation_level_list)) {
 			throw new QueryFatalException("Unknown isolation level = '{$isolation_level}', please use one of myPDObasic::ISOLATION_ constants");
 		}
+
+		if (ServerProvider::isReserveServer()) {
+			return false;
+		}
 		$query  = "SET TRANSACTION ISOLATION LEVEL {$isolation_level};";
 		$result = $this->query($query);
 		return $result->errorCode() == PDO::ERR_NONE;
@@ -311,6 +316,10 @@ class myPDObasic extends \BaseFrame\Database\PDODriver {
 	// обновляем значения в базе
 	public function update(string $query, string $table, ...$params):int {
 
+		if (ServerProvider::isReserveServer()) {
+			return 0;
+		}
+
 		// подготавливаем запрос (очищаем его)
 		$prepared_query = $this->_getPreparedQuery($query, $table, $params);
 
@@ -323,12 +332,54 @@ class myPDObasic extends \BaseFrame\Database\PDODriver {
 	// удаляем значение из базы
 	public function delete(string $query, string $table, ...$params):int {
 
+		if (ServerProvider::isReserveServer()) {
+			return 0;
+		}
+
 		// подготавливаем запрос (очищаем его)
 		$prepared_query = $this->_getPreparedQuery($query, $table, $params);
 
 		$this->_showDebugIfNeed($query);
 		$prepared_query->execute();
 		return $prepared_query->rowCount();
+	}
+
+	/**
+	 * выполняет переданный запрос
+	 *
+	 * @throws \BaseFrame\Exception\Domain\ReturnFatalException
+	 */
+	public function execQuery(string $query):\PDOStatement|bool {
+
+		// если резервный и запрос меняет бд
+		if (ServerProvider::isReserveServer() && $this->_isWriteRows($query)) {
+			return false;
+		}
+
+		return $this->query($query);
+	}
+
+	/**
+	 * проверяет является ли запрос $query изменяющим таблицу
+	 */
+	protected function _isWriteRows(string $query):bool {
+
+		$query = strtoupper($query);
+
+		$write_keyword_list = [
+			"INSERT", "UPDATE", "DELETE", "REPLACE",
+			"CREATE", "DROP", "ALTER", "TRUNCATE",
+			"LOCK", "UNLOCK",
+		];
+
+		foreach ($write_keyword_list as $keyword) {
+
+			if (strpos($query, $keyword . " ") === 0) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	// пытаемся вставить данные в таблицу, если есть - изменяем
@@ -338,10 +389,14 @@ class myPDObasic extends \BaseFrame\Database\PDODriver {
 			$this->_throwError("INSERT DATA is empty!");
 		}
 
+		if (ServerProvider::isReserveServer()) {
+			return 0;
+		}
+
 		if ($update === null) {
 			$update = $insert;
 		}
-		[$update_part, $update_params]   = $this->_prepareUpdateQueryPart($table, $update);
+		[$update_part, $update_params] = $this->_prepareUpdateQueryPart($table, $update);
 		$prepared_query = $this->_prepareInsertQuery($table, [$insert], update_part: $update_part, update_params: $update_params);
 
 		$this->_showDebugIfNeed($prepared_query->queryString);
@@ -367,6 +422,10 @@ class myPDObasic extends \BaseFrame\Database\PDODriver {
 			return $this->_throwError("INSERT DATA is empty!");
 		}
 
+		if (ServerProvider::isReserveServer()) {
+			return false;
+		}
+
 		$prepared_query = $this->_prepareInsertQuery($table, [$insert], $is_ignore);
 		$this->_showDebugIfNeed($prepared_query->queryString);
 		$prepared_query->execute();
@@ -378,6 +437,10 @@ class myPDObasic extends \BaseFrame\Database\PDODriver {
 
 		if (!is_array($insert) || count($insert) < 1) {
 			$this->_throwError("INSERT DATA is empty!");
+		}
+
+		if (ServerProvider::isReserveServer()) {
+			return 0;
 		}
 
 		$prepared_query = $this->_prepareInsertQuery($table, $insert);
@@ -394,7 +457,11 @@ class myPDObasic extends \BaseFrame\Database\PDODriver {
 	 */
 	public function insertArrayOrUpdate(string $table, array $insert, array $update):int {
 
-		[$update_part, $update_params]   = $this->_prepareUpdateQueryPart($table, $update);
+		if (ServerProvider::isReserveServer()) {
+			return 0;
+		}
+
+		[$update_part, $update_params] = $this->_prepareUpdateQueryPart($table, $update);
 		$prepared_query = $this->_prepareInsertQuery($table, $insert, update_part: $update_part, update_params: $update_params);
 
 		$this->_showDebugIfNeed($prepared_query->queryString);
@@ -450,7 +517,7 @@ class myPDObasic extends \BaseFrame\Database\PDODriver {
 		$params  = [];
 
 		$columns        = array_keys($row_list[0]);
-		$columns        = array_map(fn ($column) => "`" . $this->_removeQuote($column) . "`", $columns);
+		$columns        = array_map(fn($column) => "`" . $this->_removeQuote($column) . "`", $columns);
 		$columns_string = implode(", ", $columns);
 		$columns_count  = count($columns);
 
@@ -461,7 +528,7 @@ class myPDObasic extends \BaseFrame\Database\PDODriver {
 			}
 
 			// ищем массивы и превращаем их в JSON
-			$temp = array_map(fn ($value) => is_array($value) ? toJson($value) : $value, $row);
+			$temp = array_map(fn($value) => is_array($value) ? toJson($value) : $value, $row);
 
 			$values .= $this->_prepareInsertRow($row);
 			$params = array_merge($params, array_values($temp));
@@ -513,7 +580,7 @@ class myPDObasic extends \BaseFrame\Database\PDODriver {
 	// @long
 	protected function _prepareUpdateQueryPart(string $table, array $set):array {
 
-		$temp = [];
+		$temp       = [];
 		$param_list = [];
 
 		foreach ($set as $k => $v) {
@@ -523,7 +590,6 @@ class myPDObasic extends \BaseFrame\Database\PDODriver {
 
 			if (is_array($v)) {
 				$v = toJson($v);
-
 			} elseif ((inHtml($v, "-") || inHtml($v, "+")) && inHtml($v, $k)) {
 
 				// если это контрукция инкремента / декремента вида value = value + 1
@@ -564,9 +630,9 @@ class myPDObasic extends \BaseFrame\Database\PDODriver {
 	 * @return PDOStatement
 	 * @long
 	 */
-	protected function 	_getPreparedQuery(string $raw, string $table_name, array $raw_param_list):PDOStatement {
+	protected function _getPreparedQuery(string $raw, string $table_name, array $raw_param_list):PDOStatement {
 
-		$query = "";
+		$query      = "";
 		$param_list = [];
 
 		// защита от левака
@@ -577,12 +643,12 @@ class myPDObasic extends \BaseFrame\Database\PDODriver {
 		if ($pos === false) {
 			$this->_throwError("cant find table name, query $raw");
 		}
-	    $raw = substr_replace($raw, "`$table_name`", $pos, strlen("`?p`"));
+		$raw = substr_replace($raw, "`$table_name`", $pos, strlen("`?p`"));
 
 		preg_match_all("(\?[siuap])", $raw, $matches);
 		$raw_marker_list = $matches[0];
-		$marker_list = [];
-		$param_list = [];
+		$marker_list     = [];
+		$param_list      = [];
 
 		$param_count  = count($raw_param_list);
 		$marker_count = count($raw_marker_list);
@@ -598,18 +664,18 @@ class myPDObasic extends \BaseFrame\Database\PDODriver {
 				[$update_query_part, $update_param_list] = $this->_prepareUpdateQueryPart($table_name, $raw_param_list[$index]);
 			}
 
-			$param = match($marker) {
+			$param = match ($marker) {
 				"?s", "?p" => (string) $raw_param_list[$index],
-				"?i"       => (int) $raw_param_list[$index],
-				"?a"       => (array) array_values($raw_param_list[$index]),
-				"?u"       => (array) $update_param_list,
+				"?i" => (int) $raw_param_list[$index],
+				"?a" => (array) array_values($raw_param_list[$index]),
+				"?u" => (array) $update_param_list,
 			};
 
-			$marker_list[] = 	match($marker) {
-				"?p"             => $param,
-				"?s", "?i"       => "?",
-				"?a"             => count($param) > 0 ? str_repeat("?,", count($param) - 1) . "?" : "NULL",
-				"?u"             => $update_query_part
+			$marker_list[] = match ($marker) {
+				"?p" => $param,
+				"?s", "?i" => "?",
+				"?a" => count($param) > 0 ? str_repeat("?,", count($param) - 1) . "?" : "NULL",
+				"?u" => $update_query_part
 			};
 
 			// для ?p параметр добавлять не надо
@@ -626,7 +692,10 @@ class myPDObasic extends \BaseFrame\Database\PDODriver {
 		}
 
 		// заменяем все плейсхолдерами
-		$query = preg_replace_callback("(\?[siuap])", function(array $_) use (&$marker_list) { return (string) array_shift($marker_list);}, $raw);
+		$query = preg_replace_callback("(\?[siuap])", function(array $_) use (&$marker_list) {
+
+			return (string) array_shift($marker_list);
+		}, $raw);
 
 		if (!inHtml(strtolower($query), "limit") || !inHtml(strtolower($query), "where")) {
 			$this->_throwError("WHERE or LIMIT not found on SQL: {$query}");
@@ -637,7 +706,7 @@ class myPDObasic extends \BaseFrame\Database\PDODriver {
 
 		// приклеиваем параметры
 		// указатель нужен, так как PDO приклеивает к запросу параметр именно по указателю
-		foreach($param_list as $index => &$param) {
+		foreach ($param_list as $index => &$param) {
 			$prepared_query->bindParam($index + 1, $param, is_int($param) ? PDO::PARAM_INT : PDO::PARAM_STR);
 		}
 
