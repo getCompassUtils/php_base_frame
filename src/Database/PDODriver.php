@@ -292,28 +292,28 @@ class PDODriver extends \PDO {
 	 */
 	protected function _isAllowWriteTable(string $query):bool {
 
-		// нормализуем регистр и убираем `, чтобы ловить и `db`.`table`
+		// нормализуем регистр и убираем `, чтобы ловить table
 		$query = strtolower($query);
 		$query = str_replace("`", "", $query);
 
 		$allow_table_list = [
-			"pivot_company_service.port_registry_%s",
-			"pivot_company_service.domino_registry",
-			"domino_service.port_registry",
-			"mysql.user",
-			"mysql.db",
-			"mysql.tables_priv",
+			"port_registry_%s",
+			"domino_registry",
+			"port_registry",
+			"user",
+			"db",
+			"tables_priv",
 		];
 
 		foreach ($allow_table_list as $pattern) {
 
-			// шаблон с %s, например pivot_company_service.port_registry_%s
+			// шаблон с %s, например port_registry_%s
 			if (strpos($pattern, "%s") !== false) {
 
-				// база до %s, например "pivot_company_service.port_registry_"
+				// база до %s, например "port_registry_"
 				$base = str_replace("%s", "", $pattern);
 
-				// ищем что-то вроде pivot_company_service.port_registry_d1 / _d2 и прочее
+				// ищем что-то вроде port_registry_d1 / _d2 и прочее
 				$regex = "/\b" . preg_quote($base, "/") . "[a-z0-9_]+\b/";
 
 				if (preg_match($regex, $query)) {
