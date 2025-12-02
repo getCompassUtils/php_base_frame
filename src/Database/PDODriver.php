@@ -129,11 +129,12 @@ class PDODriver extends \PDO {
 			throw new QueryFatalException("INSERT DATA is empty!");
 		}
 
-		if (ServerProvider::isReserveServer()) {
+		$prepared_query = $this->_prepareInsertQuery($table, [$insert], $is_ignore);
+
+		if (ServerProvider::isReserveServer() && !$this->_isAllowWriteTable($prepared_query->queryString)) {
 			return "";
 		}
 
-		$prepared_query = $this->_prepareInsertQuery($table, [$insert], $is_ignore);
 		$this->_debug($prepared_query->queryString);
 		$prepared_query->execute();
 		return $this->lastInsertId();
@@ -149,11 +150,11 @@ class PDODriver extends \PDO {
 			throw new QueryFatalException("INSERT DATA is empty!");
 		}
 
-		if (ServerProvider::isReserveServer()) {
+		$prepared_query = $this->_prepareInsertQuery($table, $insert);
+		if (ServerProvider::isReserveServer() && !$this->_isAllowWriteTable($prepared_query->queryString)) {
 			return 0;
 		}
 
-		$prepared_query = $this->_prepareInsertQuery($table, $insert);
 		$this->_debug($prepared_query->queryString);
 		$prepared_query->execute();
 		return $prepared_query->rowCount();
@@ -171,15 +172,15 @@ class PDODriver extends \PDO {
 			throw new QueryFatalException("INSERT DATA is empty!");
 		}
 
-		if (ServerProvider::isReserveServer()) {
-			return 0;
-		}
-
 		if ($update === null) {
 			$update = $insert;
 		}
 		[$update_part, $update_params] = $this->_prepareUpdateQueryPart($table, $update);
 		$prepared_query = $this->_prepareInsertQuery($table, [$insert], update_part: $update_part, update_params: $update_params);
+
+		if (ServerProvider::isReserveServer() && !$this->_isAllowWriteTable($prepared_query->queryString)) {
+			return 0;
+		}
 
 		$this->_debug($prepared_query->queryString);
 		$prepared_query->execute();
@@ -195,12 +196,12 @@ class PDODriver extends \PDO {
 	 */
 	public function insertArrayOrUpdate(string $table, array $insert, array $update):int {
 
-		if (ServerProvider::isReserveServer()) {
-			return 0;
-		}
-
 		[$update_part, $update_params] = $this->_prepareUpdateQueryPart($table, $update);
 		$prepared_query = $this->_prepareInsertQuery($table, $insert, update_part: $update_part, update_params: $update_params);
+
+		if (ServerProvider::isReserveServer() && !$this->_isAllowWriteTable($prepared_query->queryString)) {
+			return 0;
+		}
 
 		$this->_debug($prepared_query->queryString);
 		$prepared_query->execute();
@@ -213,12 +214,12 @@ class PDODriver extends \PDO {
 	 */
 	public function update(string $query, string $table, ...$params):int {
 
-		if (ServerProvider::isReserveServer()) {
-			return 0;
-		}
-
 		// подготавливаем запрос (очищаем его)
 		$prepared_query = $this->_getPreparedQuery($query, $table, $params);
+
+		if (ServerProvider::isReserveServer() && !$this->_isAllowWriteTable($prepared_query->queryString)) {
+			return 0;
+		}
 
 		$this->_debug($query);
 		$prepared_query->execute();
@@ -232,12 +233,12 @@ class PDODriver extends \PDO {
 	 */
 	public function delete(string $query, string $table, ...$params):int {
 
-		if (ServerProvider::isReserveServer()) {
-			return 0;
-		}
-
 		// подготавливаем запрос (очищаем его)
 		$prepared_query = $this->_getPreparedQuery($query, $table, $params);
+
+		if (ServerProvider::isReserveServer() && !$this->_isAllowWriteTable($prepared_query->queryString)) {
+			return 0;
+		}
 
 		$this->_debug($query);
 		$prepared_query->execute();
@@ -252,7 +253,7 @@ class PDODriver extends \PDO {
 	public function execQuery(string $query):\PDOStatement|bool {
 
 		// если резервный и запрос меняет бд
-		if (ServerProvider::isReserveServer() && $this->_isWriteRows($query)) {
+		if (ServerProvider::isReserveServer() && $this->_isWriteRows($query) && !$this->_isAllowWriteTable($query)) {
 			return false;
 		}
 
@@ -279,6 +280,58 @@ class PDODriver extends \PDO {
 			}
 		}
 
+		return false;
+	}
+
+	/**
+	 * проверяем выполняется ли запрос $query изменяющий таблицу в таблицу, которую можно менять
+	 *
+	 * @param string $query
+	 *
+	 * @return bool
+	 */
+	protected function _isAllowWriteTable(string $query):bool {
+
+		// нормализуем регистр и убираем `, чтобы ловить и `db`.`table`
+		$query = strtolower($query);
+		$query = str_replace("`", "", $query);
+
+		$allow_table_list = [
+			"pivot_company_service.port_registry_%s",
+			"pivot_company_service.domino_registry",
+			"domino_service.port_registry",
+			"mysql.user",
+			"mysql.db",
+			"mysql.tables_priv",
+		];
+
+		foreach ($allow_table_list as $pattern) {
+
+			// шаблон с %s, например pivot_company_service.port_registry_%s
+			if (strpos($pattern, "%s") !== false) {
+
+				// база до %s, например "pivot_company_service.port_registry_"
+				$base = str_replace("%s", "", $pattern);
+
+				// ищем что-то вроде pivot_company_service.port_registry_d1 / _d2 и прочее
+				$regex = "/\b" . preg_quote($base, "/") . "[a-z0-9_]+\b/";
+
+				if (preg_match($regex, $query)) {
+					return true;
+				}
+
+				continue;
+			}
+
+			// точное имя таблицы из allow
+			$regex = "/\b" . preg_quote($pattern, "/") . "\b/";
+
+			if (preg_match($regex, $query)) {
+				return true;
+			}
+		}
+
+		// не нашли allow таблицы в запросе
 		return false;
 	}
 
