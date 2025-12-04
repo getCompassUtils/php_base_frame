@@ -86,6 +86,10 @@ class PDODriver extends \PDO {
 	 */
 	public function beginTransaction():bool {
 
+		if (ServerProvider::isReserveServer()) {
+			return true;
+		}
+
 		$this->_debug("BEGIN");
 		return parent::beginTransaction();
 	}
@@ -94,6 +98,10 @@ class PDODriver extends \PDO {
 	 * Коммитим транзакцию (может быть удачно|нет)
 	 */
 	public function commit():bool {
+
+		if (ServerProvider::isReserveServer()) {
+			return true;
+		}
 
 		$this->_debug("COMMIT");
 		return parent::commit();
@@ -105,6 +113,10 @@ class PDODriver extends \PDO {
 	 */
 	public function forceCommit():void {
 
+		if (ServerProvider::isReserveServer()) {
+			return;
+		}
+
 		if ($this->commit() === false) {
 			throw new QueryFatalException("Transaction commit failed");
 		}
@@ -114,6 +126,10 @@ class PDODriver extends \PDO {
 	 * Отменяем транзакцию.
 	 */
 	public function rollback():bool {
+
+		if (ServerProvider::isReserveServer()) {
+			return true;
+		}
 
 		$this->_debug("ROLLBACK");
 		return parent::rollBack();

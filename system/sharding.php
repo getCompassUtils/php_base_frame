@@ -261,6 +261,10 @@ class myPDObasic extends \BaseFrame\Database\PDODriver {
 	// начинаем транзакцию
 	public function beginTransaction():bool {
 
+		if (ServerProvider::isReserveServer()) {
+			return true;
+		}
+
 		$this->_showDebugIfNeed("BEGIN");
 		return parent::beginTransaction();
 	}
@@ -268,12 +272,20 @@ class myPDObasic extends \BaseFrame\Database\PDODriver {
 	// коммитим транзакцию (может быть удачно|нет)
 	public function commit():bool {
 
+		if (ServerProvider::isReserveServer()) {
+			return true;
+		}
+
 		$this->_showDebugIfNeed("COMMIT");
 		return parent::commit();
 	}
 
 	// коммитим транзакцию (бросаем исключение если не вышло)
 	public function forceCommit():void {
+
+		if (ServerProvider::isReserveServer()) {
+			return;
+		}
 
 		$result = self::commit();
 		if ($result != true) {
@@ -283,6 +295,10 @@ class myPDObasic extends \BaseFrame\Database\PDODriver {
 
 	// rollback транзакции
 	public function rollback():bool {
+
+		if (ServerProvider::isReserveServer()) {
+			return true;
+		}
 
 		$this->_showDebugIfNeed("ROLLBACK");
 		return parent::rollBack();
