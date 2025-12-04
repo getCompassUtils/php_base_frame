@@ -297,9 +297,7 @@ class PDODriver extends \PDO {
 		$query = str_replace("`", "", $query);
 
 		$allow_table_list = [
-			"port_registry_%s",
 			"domino_registry",
-			"port_registry",
 			"user",
 			"db",
 			"tables_priv",
@@ -307,13 +305,13 @@ class PDODriver extends \PDO {
 
 		foreach ($allow_table_list as $pattern) {
 
-			// шаблон с %s, например port_registry_%s
+			// шаблон с %s, например table_%s
 			if (strpos($pattern, "%s") !== false) {
 
-				// база до %s, например "port_registry_"
+				// база до %s, например "table_"
 				$base = str_replace("%s", "", $pattern);
 
-				// ищем что-то вроде port_registry_d1 / _d2 и прочее
+				// ищем что-то вроде table_d1 / table_d2 и прочее
 				$regex = "/\b" . preg_quote($base, "/") . "[a-z0-9_]+\b/";
 
 				if (preg_match($regex, $query)) {
