@@ -4,6 +4,7 @@ namespace BaseFrame\Database;
 
 use BaseFrame\Database\PDODriver\DebugMode;
 use BaseFrame\Exception\Gateway\QueryFatalException;
+use BaseFrame\Server\ServerProvider;
 use PDOStatement;
 
 /**
@@ -23,9 +24,9 @@ class PDODriver extends \PDO {
 	public const ISOLATION_READ_COMMITTED   = "READ COMMITTED";
 	public const ISOLATION_SERIALIZABLE     = "SERIALIZABLE";
 
-	protected array       $_hooks              = [];
-	protected string      $_database           = "";
-	protected DebugMode   $_debug_mode         = DebugMode::NONE;
+	protected array     $_hooks      = [];
+	protected string    $_database   = "";
+	protected DebugMode $_debug_mode = DebugMode::NONE;
 
 	/**
 	 * Статический конструктор из конфигурационного файла.
@@ -34,8 +35,8 @@ class PDODriver extends \PDO {
 
 		$instance = new static($conn_conf->getDSN(), $conn_conf->user, $conn_conf->password, $conn_conf->options);
 
-		$instance->_database           = $conn_conf->db_name;
-		$instance->_debug_mode         = $query_conf->debug_mode;
+		$instance->_database   = $conn_conf->db_name;
+		$instance->_debug_mode = $query_conf->debug_mode;
 
 		/** @var \BaseFrame\Database\Hook $hook */
 		foreach ($query_conf->hooks as $hook) {
@@ -70,6 +71,10 @@ class PDODriver extends \PDO {
 			throw new QueryFatalException("Unknown isolation level = '{$isolation_level}', please use one of myPDObasic::ISOLATION_ constants");
 		}
 
+		if (ServerProvider::isReserveServer()) {
+			return false;
+		}
+
 		$query  = "SET TRANSACTION ISOLATION LEVEL {$isolation_level};";
 		$result = $this->query($query);
 
@@ -81,6 +86,10 @@ class PDODriver extends \PDO {
 	 */
 	public function beginTransaction():bool {
 
+		if (ServerProvider::isReserveServer()) {
+			return true;
+		}
+
 		$this->_debug("BEGIN");
 		return parent::beginTransaction();
 	}
@@ -89,6 +98,10 @@ class PDODriver extends \PDO {
 	 * Коммитим транзакцию (может быть удачно|нет)
 	 */
 	public function commit():bool {
+
+		if (ServerProvider::isReserveServer()) {
+			return true;
+		}
 
 		$this->_debug("COMMIT");
 		return parent::commit();
@@ -100,6 +113,10 @@ class PDODriver extends \PDO {
 	 */
 	public function forceCommit():void {
 
+		if (ServerProvider::isReserveServer()) {
+			return;
+		}
+
 		if ($this->commit() === false) {
 			throw new QueryFatalException("Transaction commit failed");
 		}
@@ -109,6 +126,10 @@ class PDODriver extends \PDO {
 	 * Отменяем транзакцию.
 	 */
 	public function rollback():bool {
+
+		if (ServerProvider::isReserveServer()) {
+			return true;
+		}
 
 		$this->_debug("ROLLBACK");
 		return parent::rollBack();
@@ -125,6 +146,11 @@ class PDODriver extends \PDO {
 		}
 
 		$prepared_query = $this->_prepareInsertQuery($table, [$insert], $is_ignore);
+
+		if (ServerProvider::isReserveServer() && !$this->_isAllowWriteTable($prepared_query->queryString)) {
+			return "";
+		}
+
 		$this->_debug($prepared_query->queryString);
 		$prepared_query->execute();
 		return $this->lastInsertId();
@@ -141,6 +167,10 @@ class PDODriver extends \PDO {
 		}
 
 		$prepared_query = $this->_prepareInsertQuery($table, $insert);
+		if (ServerProvider::isReserveServer() && !$this->_isAllowWriteTable($prepared_query->queryString)) {
+			return 0;
+		}
+
 		$this->_debug($prepared_query->queryString);
 		$prepared_query->execute();
 		return $prepared_query->rowCount();
@@ -161,8 +191,12 @@ class PDODriver extends \PDO {
 		if ($update === null) {
 			$update = $insert;
 		}
-		[$update_part, $update_params]   = $this->_prepareUpdateQueryPart($table, $update);
+		[$update_part, $update_params] = $this->_prepareUpdateQueryPart($table, $update);
 		$prepared_query = $this->_prepareInsertQuery($table, [$insert], update_part: $update_part, update_params: $update_params);
+
+		if (ServerProvider::isReserveServer() && !$this->_isAllowWriteTable($prepared_query->queryString)) {
+			return 0;
+		}
 
 		$this->_debug($prepared_query->queryString);
 		$prepared_query->execute();
@@ -178,8 +212,12 @@ class PDODriver extends \PDO {
 	 */
 	public function insertArrayOrUpdate(string $table, array $insert, array $update):int {
 
-		[$update_part, $update_params]   = $this->_prepareUpdateQueryPart($table, $update);
+		[$update_part, $update_params] = $this->_prepareUpdateQueryPart($table, $update);
 		$prepared_query = $this->_prepareInsertQuery($table, $insert, update_part: $update_part, update_params: $update_params);
+
+		if (ServerProvider::isReserveServer() && !$this->_isAllowWriteTable($prepared_query->queryString)) {
+			return 0;
+		}
 
 		$this->_debug($prepared_query->queryString);
 		$prepared_query->execute();
@@ -194,7 +232,11 @@ class PDODriver extends \PDO {
 
 		// подготавливаем запрос (очищаем его)
 		$prepared_query = $this->_getPreparedQuery($query, $table, $params);
-		
+
+		if (ServerProvider::isReserveServer() && !$this->_isAllowWriteTable($prepared_query->queryString)) {
+			return 0;
+		}
+
 		$this->_debug($query);
 		$prepared_query->execute();
 
@@ -210,9 +252,101 @@ class PDODriver extends \PDO {
 		// подготавливаем запрос (очищаем его)
 		$prepared_query = $this->_getPreparedQuery($query, $table, $params);
 
+		if (ServerProvider::isReserveServer() && !$this->_isAllowWriteTable($prepared_query->queryString)) {
+			return 0;
+		}
+
 		$this->_debug($query);
 		$prepared_query->execute();
 		return $prepared_query->rowCount();
+	}
+
+	/**
+	 * выполняет переданный запрос
+	 *
+	 * @throws \BaseFrame\Exception\Domain\ReturnFatalException
+	 */
+	public function execQuery(string $query):\PDOStatement|bool {
+
+		// если резервный и запрос меняет бд
+		if (ServerProvider::isReserveServer() && $this->_isWriteRows($query) && !$this->_isAllowWriteTable($query)) {
+			return false;
+		}
+
+		return $this->query($query);
+	}
+
+	/**
+	 * проверяет является ли запрос $query изменяющим таблицу
+	 */
+	protected function _isWriteRows(string $query):bool {
+
+		$query = strtoupper($query);
+
+		$write_keyword_list = [
+			"INSERT", "UPDATE", "DELETE", "REPLACE",
+			"CREATE", "DROP", "ALTER", "TRUNCATE",
+			"LOCK", "UNLOCK",
+		];
+
+		foreach ($write_keyword_list as $keyword) {
+
+			if (strpos($query, $keyword . " ") === 0) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * проверяем выполняется ли запрос $query изменяющий таблицу в таблицу, которую можно менять
+	 *
+	 * @param string $query
+	 *
+	 * @return bool
+	 */
+	protected function _isAllowWriteTable(string $query):bool {
+
+		// нормализуем регистр и убираем `, чтобы ловить table
+		$query = strtolower($query);
+		$query = str_replace("`", "", $query);
+
+		$allow_table_list = [
+			"domino_registry",
+			"user",
+			"db",
+			"tables_priv",
+		];
+
+		foreach ($allow_table_list as $pattern) {
+
+			// шаблон с %s, например table_%s
+			if (strpos($pattern, "%s") !== false) {
+
+				// база до %s, например "table_"
+				$base = str_replace("%s", "", $pattern);
+
+				// ищем что-то вроде table_d1 / table_d2 и прочее
+				$regex = "/\b" . preg_quote($base, "/") . "[a-z0-9_]+\b/";
+
+				if (preg_match($regex, $query)) {
+					return true;
+				}
+
+				continue;
+			}
+
+			// точное имя таблицы из allow
+			$regex = "/\b" . preg_quote($pattern, "/") . "\b/";
+
+			if (preg_match($regex, $query)) {
+				return true;
+			}
+		}
+
+		// не нашли allow таблицы в запросе
+		return false;
 	}
 
 	/**
@@ -227,7 +361,7 @@ class PDODriver extends \PDO {
 		$this->_debug($query);
 		$prepared_query->execute();
 		$result = $prepared_query->fetch();
-		
+
 		if (!is_array($result)) {
 			return [];
 		}
@@ -248,7 +382,7 @@ class PDODriver extends \PDO {
 		$this->_debug($query);
 		$prepared_query->execute();
 		$result = $prepared_query->fetchAll();
-		
+
 		if (!is_array($result)) {
 			return [];
 		}
@@ -405,9 +539,9 @@ class PDODriver extends \PDO {
 		$params  = [];
 
 		$columns        = array_keys($row_list[0]);
-		$columns        = array_map(fn ($column) => "`" . $this->_removeQuote($column) . "`", $columns);
+		$columns        = array_map(fn($column) => "`" . $this->_removeQuote($column) . "`", $columns);
 		$columns_string = implode(", ", $columns);
-		$columns_count  = count($columns);		
+		$columns_count  = count($columns);
 
 		// выполняем преобразование перед записью данных
 		$row_list = $this->_beforeWrite($table, $row_list);
@@ -419,7 +553,7 @@ class PDODriver extends \PDO {
 			}
 
 			// ищем массивы и превращаем их в JSON
-			$temp = array_map(fn ($value) => is_array($value) ? toJson($value) : $value, $row);
+			$temp = array_map(fn($value) => is_array($value) ? toJson($value) : $value, $row);
 
 			$values .= $this->_prepareInsertRow($row);
 			$params = array_merge($params, array_values($temp));
@@ -430,7 +564,7 @@ class PDODriver extends \PDO {
 		$values  = substr($values, 0, -1);
 
 		$query = "INSERT $delayed $extra INTO `$table` ($columns_string) VALUES $values";
-		
+
 		if ($update_part !== "") {
 			$query = "INSERT $delayed $extra INTO `$table` ($columns_string) VALUES $values ON DUPLICATE KEY UPDATE $update_part";
 		}
@@ -461,7 +595,7 @@ class PDODriver extends \PDO {
 	}
 
 	protected function _prepareInsertRow(array $row):string {
-		
+
 		$token_list = str_repeat("?,", count($row) - 1) . "?";
 
 		return "($token_list),";
@@ -469,11 +603,11 @@ class PDODriver extends \PDO {
 
 	/**
 	 * Подготовить запрос
-	 * 
+	 *
 	 * @param string $raw
 	 * @param string $table_name
 	 * @param array  $raw_param_list
-	 * 
+	 *
 	 * @return PDOStatement
 	 * @long
 	 */
@@ -490,7 +624,7 @@ class PDODriver extends \PDO {
 		if ($pos === false) {
 			throw new QueryFatalException("cant find table name, query $raw");
 		}
-	    $raw = substr_replace($raw, "`" . $this->_removeQuote($table_name) . "`", $pos, strlen("`?p`"));
+		$raw = substr_replace($raw, "`" . $this->_removeQuote($table_name) . "`", $pos, strlen("`?p`"));
 
 		preg_match_all("(\?[siuap])", $raw, $matches);
 		$raw_marker_list = $matches[0];
@@ -511,18 +645,18 @@ class PDODriver extends \PDO {
 				[$update_query_part, $update_param_list] = $this->_prepareUpdateQueryPart($table_name, $raw_param_list[$index]);
 			}
 
-			$param = match($marker) {
+			$param = match ($marker) {
 				"?s", "?p" => (string) $raw_param_list[$index],
-				"?i"       => (int) $raw_param_list[$index],
-				"?a"       => (array) array_values($raw_param_list[$index]),
-				"?u"       => (array) $update_param_list,
+				"?i" => (int) $raw_param_list[$index],
+				"?a" => (array) array_values($raw_param_list[$index]),
+				"?u" => (array) $update_param_list,
 			};
-			
-			$marker_list[] = match($marker) {
-				"?p"       => $param,
+
+			$marker_list[] = match ($marker) {
+				"?p" => $param,
 				"?s", "?i" => "?",
-				"?a"       => count($param) > 0 ? str_repeat("?,", count($param) - 1) . "?" : "NULL",	
-				"?u"       => $update_query_part
+				"?a" => count($param) > 0 ? str_repeat("?,", count($param) - 1) . "?" : "NULL",
+				"?u" => $update_query_part
 			};
 
 			// для ?p параметр добавлять не надо
@@ -539,8 +673,11 @@ class PDODriver extends \PDO {
 		}
 
 		// заменяем все плейсхолдерами
-		$query = preg_replace_callback("(\?[siuap])", function(array $_) use (&$marker_list) { return (string) array_shift($marker_list);}, $raw);
-		
+		$query = preg_replace_callback("(\?[siuap])", function(array $_) use (&$marker_list) {
+
+			return (string) array_shift($marker_list);
+		}, $raw);
+
 		if (!inHtml(strtolower($query), "limit") || !inHtml(strtolower($query), "where")) {
 			throw new QueryFatalException("WHERE or LIMIT not found on SQL: {$query}");
 		}
@@ -550,7 +687,7 @@ class PDODriver extends \PDO {
 
 		// приклеиваем параметры
 		// указатель нужен, так как PDO приклеивает к запросу параметр именно по указателю
-		foreach($param_list as $index => &$param) {
+		foreach ($param_list as $index => &$param) {
 			$prepared_query->bindParam($index + 1, $param, is_int($param) ? self::PARAM_INT : self::PARAM_STR);
 		}
 
@@ -561,7 +698,7 @@ class PDODriver extends \PDO {
 	// @long
 	protected function _prepareUpdateQueryPart(string $table, array $set):array {
 
-		$temp = [];
+		$temp       = [];
 		$param_list = [];
 
 		[$set] = $this->_beforeWrite($table, [$set]);
@@ -573,7 +710,6 @@ class PDODriver extends \PDO {
 
 			if (is_array($v)) {
 				$v = toJson($v);
-
 			} elseif ((inHtml($v, "-") || inHtml($v, "+")) && inHtml($v, $k)) {
 
 				// если это контрукция инкремента / декремента вида value = value + 1
@@ -622,6 +758,6 @@ class PDODriver extends \PDO {
 	protected function _removeQuote(string $value):string {
 
 		return str_replace(["\"", "`", "'"], "", $value);
-	}	
+	}
 }
 

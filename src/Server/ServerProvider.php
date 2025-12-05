@@ -249,6 +249,10 @@ class ServerProvider {
 			return false;
 		}
 
+		if (self::isTest() && ((int) getenv("IS_NEED_REPLICATION_TEST")) === 1) {
+			return true;
+		}
+
 		$service_label = \BaseFrame\Server\ServerProvider::serviceLabel();
 		if (mb_strlen($service_label) == 0) {
 			return false;
