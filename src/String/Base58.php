@@ -5,15 +5,16 @@ namespace BaseFrame\String;
 /**
  * Класс для работы с base58
  */
-class Base58 {
-
+class Base58
+{
 	/** @var string используемые символы */
 	protected const _ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
 
 	/**
 	 * Кодируем строку в base58
 	 */
-	public static function encode(string $string):string|false {
+	public static function encode(string $string): string | false
+	{
 
 		$base = strlen(static::_ALPHABET);
 
@@ -34,9 +35,9 @@ class Base58 {
 		$output = "";
 		while ($decimal >= $base) {
 
-			$div     = bcdiv($decimal, $base, 0);
-			$mod     = (int) bcmod($decimal, $base);
-			$output  .= static::_ALPHABET[$mod];
+			$div = bcdiv($decimal, $base, 0);
+			$mod = (int) bcmod($decimal, $base);
+			$output .= static::_ALPHABET[$mod];
 			$decimal = $div;
 		}
 
@@ -63,7 +64,8 @@ class Base58 {
 	/**
 	 * Декодируем base58 в строку
 	 */
-	public static function decode(string $base58):string|false {
+	public static function decode(string $base58): string | false
+	{
 
 		$base = strlen(static::_ALPHABET);
 
