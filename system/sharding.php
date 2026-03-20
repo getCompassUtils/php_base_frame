@@ -372,8 +372,33 @@ class myPDObasic extends \BaseFrame\Database\PDODriver {
 			return false;
 		}
 
-		return $this->query($query);
-	}
+        if (stripos($query, "OPTIMIZE TABLE") !== false) {
+            return $this->_execIfOptimize($query);
+        }
+
+        return $this->query($query);
+    }
+
+    /**
+     * Выполняем если это optimize запрос
+     */
+    protected function _execIfOptimize(string $query):\PDOStatement|bool {
+
+        // пробуем взять лок на 1 секунду
+        $lock = $this->query("SELECT GET_LOCK('backup_lock', 1)")->fetchColumn();
+
+        // лок занят бэкапом, так что просто выходим
+        if (!$lock) {
+            return true;
+        }
+
+        try {
+            return $this->query($query);
+        } finally {
+            // всегда отпускаем лок, даже если упал запрос
+            $this->query("SELECT RELEASE_LOCK('backup_lock')");
+        }
+    }
 
 	/**
 	 * проверяет является ли запрос $query изменяющим таблицу
