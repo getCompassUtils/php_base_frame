@@ -7,23 +7,35 @@ use BaseFrame\Exception\Domain\ReturnFatalException;
 /**
  * Класс для работы с конфигами
  */
-class ConfHandler {
+class ConfHandler
+{
+	private static ConfHandler | null $_instance = null;
 
-	private static ConfHandler|null $_instance = null;
-	private array                   $_config_sharding_go;
-	private array                   $_config_sharding_sphinx;
-	private array                   $_config_sharding_rabbit;
-	private array                   $_config_sharding_mysql;
-	private array                   $_config_sharding_mcache;
-	private array                   $_config_allow_ip;
+	private array $_config_sharding_go;
+
+	private array $_config_sharding_sphinx;
+
+	private array $_config_sharding_rabbit;
+
+	private array $_config_sharding_mysql;
+
+	private array $_config_sharding_mcache;
+
+	private array $_config_allow_ip;
 
 	/**
 	 * Conf constructor.
 	 *
 	 * @throws ReturnFatalException
 	 */
-	private function __construct(array $config_sharding_go, array $config_sharding_sphinx, array $config_sharding_rabbit,
-					     array $config_sharding_mysql, array $config_sharding_mcache, array $config_allow_ip) {
+	private function __construct(
+		array $config_sharding_go,
+		array $config_sharding_sphinx,
+		array $config_sharding_rabbit,
+		array $config_sharding_mysql,
+		array $config_sharding_mcache,
+		array $config_allow_ip
+	) {
 
 		$this->_config_sharding_go     = $config_sharding_go;
 		$this->_config_sharding_sphinx = $config_sharding_sphinx;
@@ -35,10 +47,15 @@ class ConfHandler {
 
 	/**
 	 * инициализируем синглтон
-	 *
 	 */
-	public static function init(array $config_sharding_go, array $config_sharding_sphinx, array $config_sharding_rabbit,
-					    array $config_sharding_mysql, array $config_sharding_mcache, array $config_allow_ip):static {
+	public static function init(
+		array $config_sharding_go,
+		array $config_sharding_sphinx,
+		array $config_sharding_rabbit,
+		array $config_sharding_mysql,
+		array $config_sharding_mcache,
+		array $config_allow_ip
+	): static {
 
 		if (!is_null(static::$_instance)) {
 
@@ -56,7 +73,8 @@ class ConfHandler {
 	/**
 	 * Возвращает экземпляр класса.
 	 */
-	public static function instance():static {
+	public static function instance(): static
+	{
 
 		if (is_null(static::$_instance)) {
 			throw new ReturnFatalException("need to initialized before using");
@@ -67,54 +85,54 @@ class ConfHandler {
 
 	/**
 	 * получаем config_sharding_go
-	 *
 	 */
-	public function shardingGo():array {
+	public function shardingGo(): array
+	{
 
 		return $this->_config_sharding_go;
 	}
 
 	/**
 	 * получаем config_sharding_sphinx
-	 *
 	 */
-	public function shardingSphinx():array {
+	public function shardingSphinx(): array
+	{
 
 		return $this->_config_sharding_sphinx;
 	}
 
 	/**
 	 * получаем config_sharding_rabbit
-	 *
 	 */
-	public function shardingRabbit():array {
+	public function shardingRabbit(): array
+	{
 
 		return $this->_config_sharding_rabbit;
 	}
 
 	/**
 	 * получаем config_sharding_mysql
-	 *
 	 */
-	public function shardingMysql():array {
+	public function shardingMysql(): array
+	{
 
 		return $this->_config_sharding_mysql;
 	}
 
 	/**
 	 * получаем config_sharding_mcache
-	 *
 	 */
-	public function shardingMcache():array {
+	public function shardingMcache(): array
+	{
 
 		return $this->_config_sharding_mcache;
 	}
 
 	/**
 	 * получаем config_allow_ip
-	 *
 	 */
-	public function allowIp():array {
+	public function allowIp(): array
+	{
 
 		return $this->_config_allow_ip;
 	}

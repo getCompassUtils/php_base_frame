@@ -97,4 +97,7 @@ const FILE_SOURCE_DOCUMENT_CDN = 26; // дефолтный файл докуме
 // путь в конфиг-файлам пивота
 const DOMINO_CONFIG_PATH = "/pivot_config/";
 
+// максимальный unsigned int32
+const MAX_UNSIGNED_INT32 = 4_294_967_295;
+
 // @formatter:on

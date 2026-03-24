@@ -168,11 +168,11 @@ function getIp():string {
 	}
 
 	if (isset($_SERVER["HTTP_X_REAL_IP"])) {
-		return $_SERVER["HTTP_X_REAL_IP"];
+		return trim(explode(",", $_SERVER["HTTP_X_REAL_IP"])[0]);
 	}
 
 	if (isset($_SERVER["HTTP_X_FORWARDED_FOR"])) {
-		return $_SERVER["HTTP_X_FORWARDED_FOR"];
+		return trim(explode(",", $_SERVER["HTTP_X_FORWARDED_FOR"])[0]);
 	}
 
 	return $_SERVER["REMOTE_ADDR"] ?? "127.1.1.1";
