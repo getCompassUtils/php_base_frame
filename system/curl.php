@@ -1,42 +1,69 @@
 <?php
 
 use BaseFrame\Exception\Domain\ReturnFatalException;
+use BaseFrame\Exception\Domain\UnsupportedProxyProtocol;
+use BaseFrame\Exception\Domain\InvalidUrl;
 
 /**
  * новый класс curl
  * !! Тестим здесь: http://httpbin.org/
  */
-class Curl {
+class Curl
+{
+	protected ?CurlHandle $_curl = null;
 
-	/** @var false|resource */
-	protected $_curl = false;
+	protected int $_response_code = 0;
 
-	protected int    $_response_code    = 0;
-	protected string $_redirect_url     = "";
-	protected string $_content_type     = "";
-	protected string $_effective_url    = "";
-	protected string $_user_agent       = "Robot";
-	protected string $_accept_language  = "";
-	protected array  $_cookies          = [];
-	protected array  $_extra_headers    = [];
-	protected array  $_response_headers = [];
-	protected int    $_timeout          = 30;
-	protected mixed  $_options          = [
+	protected string $_redirect_url = "";
+
+	protected string $_content_type = "";
+
+	protected string $_effective_url = "";
+
+	protected string $_user_agent = "Robot";
+
+	protected string $_accept_language = "";
+
+	protected array $_cookies = [];
+
+	protected array $_extra_headers = [];
+
+	protected array $_response_headers = [];
+
+	protected int $_timeout = 30;
+
+	protected mixed $_options = [
 		"url" => null,
 	];
+
 	protected string $_ca_certificate = "";
+
+	// поддерживаемые протоколы прокси
+	public const PROXY_PROTOCOL_HTTP    = "http";
+	public const PROXY_PROTOCOL_HTTPS   = "https";
+	public const PROXY_PROTOCOL_SOCKS5  = "socks5";
+	public const PROXY_PROTOCOL_SOCKS5H = "socks5h";
+
+	// поддерживаемые протоколы прокси
+	public const ALLOWED_PROXY_PROTOCOLS = [
+		Curl::PROXY_PROTOCOL_HTTP,
+		Curl::PROXY_PROTOCOL_HTTPS,
+		Curl::PROXY_PROTOCOL_SOCKS5,
+		Curl::PROXY_PROTOCOL_SOCKS5H
+	];
 
 	/**
 	 * конструктор
 	 * @throws returnException
 	 */
-	public function __construct() {
+	public function __construct()
+	{
 
 		if (!extension_loaded("curl")) {
 			throw new ReturnFatalException("cURL library is not loaded");
 		}
 
-		if ($this->_curl === false) {
+		if (is_null($this->_curl)) {
 			$this->_curl = curl_init();
 		}
 
@@ -49,30 +76,27 @@ class Curl {
 	/**
 	 * destructor
 	 */
-	public function __destruct() {
+	public function __destruct()
+	{
 
 		curl_close($this->_curl);
 	}
 
 	/**
 	 * Устанавливаем CA сертификат
-	 *
-	 * @param string $ca_certificate
-	 *
-	 * @return void
 	 */
-	public function setCaCertificate(string $ca_certificate): void {
+	public function setCaCertificate(string $ca_certificate): void
+	{
 		$this->_ca_certificate = $ca_certificate;
 	}
 
 	/**
 	 * устанавливаем user_agent
 	 *
-	 * @param string $user_agent
-	 *
 	 * @return $this
 	 */
-	public function setUserAgent(string $user_agent):self {
+	public function setUserAgent(string $user_agent): self
+	{
 
 		$this->_user_agent = $user_agent;
 		return $this;
@@ -81,11 +105,10 @@ class Curl {
 	/**
 	 * Установить хедер принимаемого языка
 	 *
-	 * @param string $lang
-	 *
 	 * @return $this
 	 */
-	public function setAcceptLanguage(string $lang):self {
+	public function setAcceptLanguage(string $lang): self
+	{
 
 		$this->_accept_language = $lang;
 		return $this;
@@ -94,11 +117,10 @@ class Curl {
 	/**
 	 * устанавливаем таймаут
 	 *
-	 * @param int $_timeout
-	 *
 	 * @return $this
 	 */
-	public function setTimeout(int $_timeout):self {
+	public function setTimeout(int $_timeout): self
+	{
 
 		$this->_timeout = $_timeout;
 		return $this;
@@ -107,23 +129,61 @@ class Curl {
 	/**
 	 * добавить куку
 	 *
-	 * @param string $key
-	 * @param string $value
-	 *
 	 * @return $this
 	 */
-	public function addCookie(string $key, string $value):self {
+	public function addCookie(string $key, string $value): self
+	{
 
 		$this->_cookies[$key] = $value;
 		return $this;
 	}
 
 	/**
-	 * получить куки
-	 *
-	 * @return array
+	 * Установить прокси
 	 */
-	public function getCookies():array {
+	public function setProxy(string $protocol, string $host, int $port, ?string $username = null, ?string $password = null): self
+	{
+
+		// отсекаем неподдерживаемые протоколы
+		$proxy_protocol_opt = match ($protocol) {
+			self::PROXY_PROTOCOL_HTTP    => CURLPROXY_HTTP,
+			self::PROXY_PROTOCOL_HTTPS   => CURLPROXY_HTTPS,
+			self::PROXY_PROTOCOL_SOCKS5  => CURLPROXY_SOCKS5,
+			self::PROXY_PROTOCOL_SOCKS5H => CURLPROXY_SOCKS5_HOSTNAME,
+			default                      => throw new UnsupportedProxyProtocol("unknown protocol passed")
+		};
+
+		// устанавливаем тип прокси
+		curl_setopt($this->_curl, CURLOPT_PROXYTYPE, $proxy_protocol_opt);
+
+		// парсим хост прокси
+		$full_host_address = "$host:$port";
+		$parsed_host       = parse_url($full_host_address);
+
+		if (!isset($parsed_host["host"], $parsed_host["port"])) {
+			throw new InvalidUrl("cant find host or port");
+		}
+
+		curl_setopt($this->_curl, CURLOPT_PROXY, $full_host_address);
+
+		// если передали username, добавляем
+		if ($username) {
+			curl_setopt($this->_curl, CURLOPT_PROXYUSERPWD, "$username:$password");
+		}
+
+		// если выбран http протокол, включаем прямой туннель до https узла
+		if ($protocol == self::PROXY_PROTOCOL_HTTP) {
+			curl_setopt($this->_curl, CURLOPT_HTTPPROXYTUNNEL, true);
+		}
+
+		return $this;
+	}
+
+	/**
+	 * получить куки
+	 */
+	public function getCookies(): array
+	{
 
 		return $this->_cookies;
 	}
@@ -131,15 +191,10 @@ class Curl {
 	/**
 	 * get запрос
 	 *
-	 * @param string $url
-	 * @param array  $params
-	 *
-	 * @param array  $headers
-	 *
-	 * @return string
 	 * @throws cs_CurlError
 	 */
-	public function get(string $url, array $params = [], array $headers = []):string {
+	public function get(string $url, array $params = [], array $headers = []): string
+	{
 
 		if (count($params) > 0) {
 			$url .= "?" . http_build_query($params);
@@ -152,12 +207,10 @@ class Curl {
 	/**
 	 * получаем картинку
 	 *
-	 * @param string $file_url
-	 *
-	 * @return string
 	 * @throws cs_CurlError
 	 */
-	public function getImage(string $file_url):string {
+	public function getImage(string $file_url): string
+	{
 
 		$host = $this->_getDomain($file_url);
 
@@ -175,16 +228,13 @@ class Curl {
 	/**
 	 * post запрос
 	 *
-	 * @param string $url
-	 * @param array  $params
+	 * @param array $params
 	 *
-	 * @param array  $headers
-	 *
-	 * @return string
 	 * @throws cs_CurlError
 	 * @mixed
 	 */
-	public function post(string $url, mixed $params = [], array $headers = []):string {
+	public function post(string $url, mixed $params = [], array $headers = []): string
+	{
 
 		$params = is_array($params) ? http_build_query($params) : $params;
 
@@ -199,10 +249,10 @@ class Curl {
 	/**
 	 * put запрос
 	 *
-	 * @return string
 	 * @throws cs_CurlError
 	 */
-	public function put(string $url, mixed $params = [], array $headers = []):string {
+	public function put(string $url, mixed $params = [], array $headers = []): string
+	{
 
 		$params = is_array($params) ? http_build_query($params) : $params;
 
@@ -217,10 +267,10 @@ class Curl {
 	/**
 	 * delete запрос
 	 *
-	 * @return string
 	 * @throws cs_CurlError
 	 */
-	public function delete(string $url, array $headers = []):string {
+	public function delete(string $url, array $headers = []): string
+	{
 
 		curl_setopt($this->_curl, CURLOPT_RETURNTRANSFER, true);
 		curl_setopt($this->_curl, CURLOPT_CUSTOMREQUEST, "DELETE");
@@ -232,10 +282,10 @@ class Curl {
 	/**
 	 * patch запрос
 	 *
-	 * @return string
 	 * @throws cs_CurlError
 	 */
-	public function patch(string $url, mixed $params = [], array $headers = []):string {
+	public function patch(string $url, mixed $params = [], array $headers = []): string
+	{
 
 		$params = is_array($params) ? http_build_query($params) : $params;
 
@@ -249,61 +299,54 @@ class Curl {
 
 	/**
 	 * получаем response code
-	 *
-	 * @return int
 	 */
-	public function getResponseCode():int {
+	public function getResponseCode(): int
+	{
 
 		return $this->_response_code;
 	}
 
 	/**
 	 * получаем effective url
-	 *
-	 * @return string
 	 */
-	public function getEffectiveUrl():string {
+	public function getEffectiveUrl(): string
+	{
 
 		return $this->_effective_url;
 	}
 
 	/**
 	 * получаем redirect url
-	 *
-	 * @return string
 	 */
-	public function getRedirectUrl():string {
+	public function getRedirectUrl(): string
+	{
 
 		return $this->_redirect_url;
 	}
 
 	/**
 	 * получаем content type
-	 *
-	 * @return string
 	 */
-	public function getContentType():string {
+	public function getContentType(): string
+	{
 
 		return $this->_content_type;
 	}
 
 	/**
 	 * получаем headers
-	 *
-	 * @return array
 	 */
-	public function getHeaders():array {
+	public function getHeaders(): array
+	{
 
 		return $this->_response_headers;
 	}
 
 	/**
-	 * @param $key
-	 * @param $value
-	 *
 	 * @return $this
 	 */
-	public function addHeader(string $key, string $value):self {
+	public function addHeader(string $key, string $value): self
+	{
 
 		$this->_extra_headers[$key] = $value;
 		return $this;
@@ -315,7 +358,8 @@ class Curl {
 	 * @mixed
 	 * @throws cs_CurlError
 	 */
-	public function uploadFile($url, $ar_post, $file_path, $headers = [], $mime_type = "", $posted_filename = ""):bool|string {
+	public function uploadFile($url, $ar_post, $file_path, $headers = [], $mime_type = "", $posted_filename = ""): bool | string
+	{
 
 		// докидываем файл в апи запрос
 		$ar_post["file"] = new CURLFile($file_path, $mime_type, $posted_filename);
@@ -328,10 +372,10 @@ class Curl {
 	/**
 	 * загружаем файл с помощью его содержимого
 	 *
-	 * @return bool|string
 	 * @throws cs_CurlError
 	 */
-	public function uploadFileBase64(string $url, array $ar_post, string $base64_encoded_file_content, string $mime_type, string $posted_filename, array $headers = []):bool|string {
+	public function uploadFileBase64(string $url, array $ar_post, string $base64_encoded_file_content, string $mime_type, string $posted_filename, array $headers = []): bool | string
+	{
 
 		// создаем временный файл для хранения blob данных
 		$tmp_file = tmpfile();
@@ -358,13 +402,10 @@ class Curl {
 	/**
 	 * добавляем опции к запросу
 	 *
-	 * @param $option
-	 * @param $value
-	 *
-	 * @return void
 	 * @mixed
 	 */
-	public function setOpt(int $option, mixed $value):void {
+	public function setOpt(int $option, mixed $value): void
+	{
 
 		$option = strtolower($option);
 		curl_setopt($this->_curl, $option, $value);
@@ -372,17 +413,14 @@ class Curl {
 
 	/**
 	 * Ограничить размер загружаемой страницы
-	 *
-	 * @param int $max_byte_length
-	 *
-	 * @return Curl
 	 */
-	public function restrictContentLength(int $max_byte_length):self {
+	public function restrictContentLength(int $max_byte_length): self
+	{
 
 		// мониторим, сколько скачали, если больше переданного значения, то завершаем
 		// нельзя верить только хедеру. Им могут манипулировать. Для этого и добавлена функция прогресса
 		$this->setOpt(CURLOPT_MAXFILESIZE, $max_byte_length);
-		$this->setOpt(CURLOPT_PROGRESSFUNCTION, function(int $download_size, int $downloaded, int $upload_size, int $uploaded) use ($max_byte_length) {
+		$this->setOpt(CURLOPT_PROGRESSFUNCTION, function (int $download_size, int $downloaded, int $upload_size, int $uploaded) use ($max_byte_length) {
 
 			return ($downloaded > $max_byte_length) ? 1 : 0;
 		});
@@ -395,7 +433,8 @@ class Curl {
 	 *
 	 * @return $this
 	 */
-	public function needVerify():self {
+	public function needVerify(): self
+	{
 
 		curl_setopt($this->_curl, CURLOPT_SSL_VERIFYHOST, 2);
 		curl_setopt($this->_curl, CURLOPT_SSL_VERIFYPEER, true);
@@ -412,10 +451,10 @@ class Curl {
 	 *
 	 * @param null $url
 	 *
-	 * @return string
 	 * @mixed
 	 */
-	protected function _getDomain($url = null):string {
+	protected function _getDomain($url = null): string
+	{
 
 		if ($url === null) {
 			$url = $this->_options["url"];
@@ -427,14 +466,11 @@ class Curl {
 	/**
 	 * выполняем запрос
 	 *
-	 * @param string $url
-	 * @param array  $headers
-	 *
-	 * @return string
 	 * @throws cs_CurlError
 	 * @mixed
 	 */
-	protected function _exec(string $url, array $headers):string {
+	protected function _exec(string $url, array $headers): string
+	{
 
 		if ($url === "") {
 			throw new cs_CurlError("empty url");
@@ -475,7 +511,8 @@ class Curl {
 	}
 
 	// получаем строку кук
-	protected function _getCookieString():string {
+	protected function _getCookieString(): string
+	{
 
 		$cookies = "";
 		foreach ($this->_cookies as $key => $value) {
@@ -485,7 +522,8 @@ class Curl {
 	}
 
 	// получаем форматированные заголовки
-	protected function _doFormatHeaders(array $headers):array {
+	protected function _doFormatHeaders(array $headers): array
+	{
 
 		$headers = array_merge($this->_extra_headers, $headers);
 
@@ -500,12 +538,9 @@ class Curl {
 
 	/**
 	 * собираем ответ curl
-	 *
-	 * @param mixed $response
-	 *
-	 * @return bool|string
 	 */
-	protected function _getResponse(mixed $response):bool|string {
+	protected function _getResponse(mixed $response): bool | string
+	{
 
 		// достаем информацию
 		$this->_response_code = formatInt(curl_getinfo($this->_curl, CURLINFO_HTTP_CODE));
@@ -522,12 +557,10 @@ class Curl {
 	/**
 	 * парсим заголовки
 	 *
-	 * @param string $headers
-	 *
 	 * @mixed
-	 * @return array
 	 */
-	protected function _parseHeaders(string $headers):array {
+	protected function _parseHeaders(string $headers): array
+	{
 
 		$header_list = explode("\n", trim($headers));
 
@@ -553,12 +586,9 @@ class Curl {
 
 	/**
 	 * парсим куки
-	 *
-	 * @param string $cookie_string
-	 *
-	 * @return void
 	 */
-	protected function _parseCookie(string $cookie_string):void {
+	protected function _parseCookie(string $cookie_string): void
+	{
 
 		$cookie_path = explode(";", trim($cookie_string));
 		foreach ($cookie_path as $v) {
