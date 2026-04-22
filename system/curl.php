@@ -172,8 +172,15 @@ class Curl
 		}
 
 		// если выбран http протокол, включаем прямой туннель до https узла
-		if ($protocol == self::PROXY_PROTOCOL_HTTP) {
+		if ($protocol === self::PROXY_PROTOCOL_HTTP) {
 			curl_setopt($this->_curl, CURLOPT_HTTPPROXYTUNNEL, true);
+		}
+
+		// отключаем верификацию прокси в https соединении
+		if ($protocol === self::PROXY_PROTOCOL_HTTPS) {
+
+			curl_setopt($this->_curl, CURLOPT_PROXY_SSL_VERIFYHOST, false);
+			curl_setopt($this->_curl, CURLOPT_PROXY_SSL_VERIFYPEER, false);
 		}
 
 		return $this;
