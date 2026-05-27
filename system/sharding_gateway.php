@@ -1,25 +1,29 @@
-<?php declare(strict_types=1);
+<?php
 
+declare(strict_types=1);
+
+use BaseFrame\EventBroker\Kafka;
 use BaseFrame\Exception\Domain\ParseFatalException;
 use BaseFrame\Exception\Gateway\DBShardingNotFoundException;
 
 /**
  * Класс шардинга
  */
-abstract class ShardingGateway {
-
-	public const DB_KEY     = "db";
-	public const BUS_KEY    = "bus";
-	public const CACHE_KEY  = "cache";
-	public const RPC_KEY    = "rpc";
-	public const SEARCH_KEY = "search";
-
+abstract class ShardingGateway
+{
+	public const DB_KEY                     = "db";
+	public const BUS_KEY                    = "bus";
+	public const MSG_BROKER_KEY             = "msg_broker";
+	public const CACHE_KEY                  = "cache";
+	public const RPC_KEY                    = "rpc";
+	public const SEARCH_KEY                 = "search";
 	protected const _KNOWN_CONFIG_NAME_LIST = [
 		self::DB_KEY,
 		self::BUS_KEY,
 		self::CACHE_KEY,
 		self::RPC_KEY,
 		self::SEARCH_KEY,
+		self::MSG_BROKER_KEY,
 	];
 
 	/** @var array[] конфигурирующие функции */
@@ -28,15 +32,14 @@ abstract class ShardingGateway {
 	/**
 	 * Закрытый конструктор.
 	 *
-	 * @param array $config_list
-	 *
 	 * @throws ParseFatalException
 	 */
-	protected function __construct(array $config_list) {
+	protected function __construct(array $config_list)
+	{
 
 		foreach ($config_list as $key => $cfg) {
 
-			if (!in_array($key, static::_KNOWN_CONFIG_NAME_LIST)) {
+			if (!in_array($key, static::_KNOWN_CONFIG_NAME_LIST, true)) {
 				throw new ParseFatalException("passed unknown config {$key}");
 			}
 
@@ -50,9 +53,9 @@ abstract class ShardingGateway {
 
 	/**
 	 * Статический конструктор.
-	 * @return mixed
 	 */
-	public static function instance():mixed {
+	public static function instance(): mixed
+	{
 
 		return [];
 	}
@@ -61,7 +64,8 @@ abstract class ShardingGateway {
 	 * Возвращает класс для работы с базой данных
 	 * @throws \BaseFrame\Exception\Gateway\DBShardingNotFoundException
 	 */
-	public static function database(string $database):\BaseFrame\Database\PDODriver {
+	public static function database(string $database): \BaseFrame\Database\PDODriver
+	{
 
 		// получаем конфиг с базой данных
 		$conf = static::instance()->_config_list[static::DB_KEY];
@@ -76,12 +80,10 @@ abstract class ShardingGateway {
 	/**
 	 * Возвращает класс для работы с шиной данных.
 	 *
-	 * @param string $bus
-	 *
-	 * @return Rabbit
 	 * @throws ParseFatalException
 	 */
-	public static function rabbit(string $bus = "bus"):Rabbit {
+	public static function rabbit(string $bus = "bus"): Rabbit
+	{
 
 		// получаем конфиг с шиной
 		$conf = static::instance()->_config_list[static::BUS_KEY];
@@ -94,11 +96,19 @@ abstract class ShardingGateway {
 	}
 
 	/**
-	 * Возвращает класс для работы с шиной данных.
-	 *
-	 * @return mCache
+	 * Возвращает класс для работы с kafka
 	 */
-	public static function cache():mCache {
+	public static function msgBroker(string $key = "default"): Kafka
+	{
+
+		return Kafka::fromConf(static::instance()->_config_list[static::MSG_BROKER_KEY], $key);
+	}
+
+	/**
+	 * Возвращает класс для работы с шиной данных.
+	 */
+	public static function cache(): mCache
+	{
 
 		// получаем конфиг с базой данных
 		return mCache::configured(static::instance()->_config_list[static::CACHE_KEY]);
@@ -107,14 +117,10 @@ abstract class ShardingGateway {
 	/**
 	 * Возвращает класс для работы с шиной данных.
 	 *
-	 * @param string $module
-	 * @param string $class_name
-	 * @param string $key
-	 *
-	 * @return Grpc
 	 * @throws ParseFatalException
 	 */
-	public static function rpc(string $module, string $class_name, string $key = ""):Grpc {
+	public static function rpc(string $module, string $class_name, string $key = ""): Grpc
+	{
 
 		// получаем конфиг с шиной
 		$conf = static::instance()->_config_list[static::RPC_KEY];
@@ -129,11 +135,9 @@ abstract class ShardingGateway {
 
 	/**
 	 * Возвращает класс для работы с поисковым движком.
-	 *
-	 * @param string $key
-	 * @return \BaseFrame\Search\Manticore
 	 */
-	public static function search(string $key = ""):\BaseFrame\Search\Manticore {
+	public static function search(string $key = ""): \BaseFrame\Search\Manticore
+	{
 
 		// получаем конфиг с шиной
 		$conf = static::instance()->_config_list[static::SEARCH_KEY];

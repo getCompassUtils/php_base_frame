@@ -5,8 +5,8 @@ namespace BaseFrame\Search\Config;
 /**
  * Класс-конфигуратор подключения к Manticore Search.
  */
-#[\JetBrains\PhpStorm\Immutable]
-class Connection {
+
+readonly class Connection {
 
 	/**
 	 * Класс-конфигуратор подключения к Manticore Search.

@@ -32,8 +32,9 @@
 		}
 	],
 	"require": {
+		"php": ">=8.4",
 		"backend_compass_dev_2/php_analytic_utils": "*",
-		"phpseclib/phpseclib": "3.0.42",
+		"phpseclib/phpseclib": "3.0.52",
 		"php-amqplib/php-amqplib": "v3.7.3",
 		"grpc/grpc": "1.57.0",
 		"ext-posix": "*",
@@ -46,9 +47,9 @@
 		"ext-shmop": "*",
 		"ext-zend-opcache": "*",
 		"ext-grpc": "*",
-		"ext-geoip": "*",
 		"ext-memcache": "*",
 		"ext-bcmath": "*",
-		"ext-protobuf": "*"
+		"ext-protobuf": "*",
+		"ext-rdkafka": "*"
 	}
 }
