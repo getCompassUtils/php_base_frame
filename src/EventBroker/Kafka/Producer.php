@@ -112,8 +112,17 @@ class Producer
 	public function end(): void
 	{
 
-		@$this->_producer->flush(1_000);
+		// если очередь продюсера пуста — сообщений не отправляли
+		if ($this->_producer->getOutQLen() === 0) {
+			return;
+		}
 
+		// подавляем ошибки, чтобы не вылетело приложение
+		try {
+			$this->_producer->flush(1_000);
+		} catch (\Throwable $e) {
+			// на этапе завершения ошибки досылки игнорируем
+		}
 	}
 
 	/**

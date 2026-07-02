@@ -136,7 +136,17 @@ class Consumer
 	public function end(): void
 	{
 
-		$this->_consumer->close();
+		// если ни на один топик не подписывались, то просто выходим
+		if (count($this->_registered_consumer_topics) === 0) {
+			return;
+		}
+
+		// подавляем ошибки, чтобы не вылетело приложение
+		try {
+			$this->_consumer->close();
+		} catch (\Throwable $e) {
+			// на этапе завершения ошибки закрытия игнорируем
+		}
 	}
 
 	/**
