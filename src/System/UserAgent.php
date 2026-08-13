@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace BaseFrame\System;
 
 use BaseFrame\Exception\Request\AppNameNotFoundException;
@@ -9,8 +11,8 @@ use JetBrains\PhpStorm\ArrayShape;
 /**
  * Функции для работы с user agent клиента, выполняющего запрос
  */
-class UserAgent {
-
+class UserAgent
+{
 	public const USER_AGENT_ROBOT = "robot";
 
 	// константа для неизвестной версии приложения у пользователя
@@ -21,10 +23,10 @@ class UserAgent {
 	public const PLATFORM_ANDROID  = "android";
 	public const PLATFORM_IOS      = "iphone";
 	public const PLATFORM_IPAD     = "ipad";
+	public const PLATFORM_WEB      = "web";
 	public const PLATFORM_OTHER    = "other";
-
-	public const COMPASS_APP = "compass";
-	public const COMTEAM_APP = "comteam";
+	public const COMPASS_APP       = "compass";
+	public const COMTEAM_APP       = "comteam";
 
 	// доступные платформы
 	protected const _AVAILABLE_PLATFORM_LIST = [
@@ -32,6 +34,7 @@ class UserAgent {
 		self::PLATFORM_IOS,
 		self::PLATFORM_ANDROID,
 		self::PLATFORM_IPAD,
+		self::PLATFORM_WEB,
 	];
 
 	// поддерживаемые типы приложения
@@ -42,26 +45,28 @@ class UserAgent {
 
 	/**
 	 * Возвращает user agent пользователя
-	 *
-	 * @return string
 	 */
-	public static function getUserAgent():string {
+	public static function getUserAgent(): string
+	{
 
-		if (!isset($_SERVER["HTTP_USER_AGENT"]) || $_SERVER["HTTP_USER_AGENT"] == "") {
-			$_SERVER["HTTP_USER_AGENT"] = self::USER_AGENT_ROBOT;
+		$user_agent_header = $_SERVER["HTTP_USER_AGENT"] ?? "";
+
+		if (isset($_SERVER["HTTP_X_USER_AGENT"])) {
+			$user_agent_header = $_SERVER["HTTP_X_USER_AGENT"];
 		}
 
-		return formatString($_SERVER["HTTP_USER_AGENT"]);
+		if ($user_agent_header === "") {
+			$user_agent_header = self::USER_AGENT_ROBOT;
+		}
+
+		return formatString($user_agent_header);
 	}
 
 	/**
 	 * Получить платформу клиента
-	 *
-	 * @param string|null $user_agent
-	 *
-	 * @return string
 	 */
-	public static function getPlatform(?string $user_agent = null):string {
+	public static function getPlatform(?string $user_agent = null): string
+	{
 
 		// если работаем из консоли и не передали ua - возвращаем платформу other
 		if (isCLi() && is_null($user_agent)) {
@@ -87,12 +92,9 @@ class UserAgent {
 
 	/**
 	 * Получить версию приложения
-	 *
-	 * @param string|null $user_agent
-	 *
-	 * @return string
 	 */
-	public static function getAppVersion(?string $user_agent = null):string {
+	public static function getAppVersion(?string $user_agent = null): string
+	{
 
 		if (is_null($user_agent)) {
 			$user_agent = self::getUserAgent();
@@ -112,39 +114,31 @@ class UserAgent {
 
 	/**
 	 * Доступна ли платформа
-	 *
-	 * @param string $platform
-	 *
-	 * @return bool
 	 */
-	public static function isPlatformAvailable(string $platform):bool {
+	public static function isPlatformAvailable(string $platform): bool
+	{
 
-		return in_array($platform, self::_AVAILABLE_PLATFORM_LIST);
+		return in_array($platform, self::_AVAILABLE_PLATFORM_LIST, true);
 	}
 
 	/**
 	 * Проверяем, что пользователь зашел с известной нам платформы
 	 *
-	 * @param string $platform
-	 *
-	 * @return void
 	 * @throws PlatformNotFoundException
 	 */
-	public static function assertPlatformAvailable(string $platform):void {
+	public static function assertPlatformAvailable(string $platform): void
+	{
 
-		if (!in_array($platform, self::_AVAILABLE_PLATFORM_LIST)) {
+		if (!in_array($platform, self::_AVAILABLE_PLATFORM_LIST, true)) {
 			throw new PlatformNotFoundException("unknown client platform");
 		}
 	}
 
 	/**
 	 * Получить название приложения из User-Agent
-	 *
-	 * @param string|null $user_agent
-	 *
-	 * @return string
 	 */
-	public static function getAppName(?string $user_agent = null):string {
+	public static function getAppName(?string $user_agent = null): string
+	{
 
 		if (is_null($user_agent)) {
 			$user_agent = self::getUserAgent();
@@ -158,17 +152,14 @@ class UserAgent {
 
 	/**
 	 * Получить полную информацию по user agent пользователя
-	 *
-	 * @param string|null $user_agent
-	 *
-	 * @return array
 	 */
 	#[ArrayShape([
 		"app_version" => "string",
 		"platform"    => "string",
 		"user_agent"  => "null|string",
 	])]
-	public static function getFullInfo(?string $user_agent = null):array {
+	public static function getFullInfo(?string $user_agent = null): array
+	{
 
 		if (is_null($user_agent)) {
 			$user_agent = self::getUserAgent();
@@ -186,7 +177,8 @@ class UserAgent {
 	 *
 	 * @return string[]
 	 */
-	public static function getAvailablePlatformList():array {
+	public static function getAvailablePlatformList(): array
+	{
 
 		return self::_AVAILABLE_PLATFORM_LIST;
 	}
@@ -194,12 +186,10 @@ class UserAgent {
 	/**
 	 * Вернуть список поддерживаемых типов приложения
 	 *
-	 * @param string|null $app_name
-	 *
-	 * @return void
 	 * @throws AppNameNotFoundException
 	 */
-	public static function assertAppNameAvailable(?string $app_name = null):void {
+	public static function assertAppNameAvailable(?string $app_name = null): void
+	{
 
 		// если не передали имя приложения - берем его из user-agent
 		if (is_null($app_name)) {
@@ -208,24 +198,22 @@ class UserAgent {
 			$app_name = mb_strtolower($app_name);
 		}
 
-		if (!in_array($app_name, self::_AVAILABLE_APP_NAME_LIST)) {
+		if (!in_array($app_name, self::_AVAILABLE_APP_NAME_LIST, true)) {
 			throw new AppNameNotFoundException("cant find app name in available list");
 		}
 	}
 
-	public static function getAvailableAppNameList():array {
+	public static function getAvailableAppNameList(): array
+	{
 
 		return self::_AVAILABLE_APP_NAME_LIST;
 	}
 
 	/**
 	 * Найти и вернуть пришедшую платформу из списка доступных
-	 *
-	 * @param string $user_agent
-	 *
-	 * @return string
 	 */
-	protected static function _getPlatformFromList(string $user_agent):string {
+	protected static function _getPlatformFromList(string $user_agent): string
+	{
 
 		// проходимся по всем доступным платформам
 		foreach (self::_AVAILABLE_PLATFORM_LIST as $v) {

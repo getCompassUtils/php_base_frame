@@ -14,6 +14,7 @@ use \BaseFrame\Conf\ConfBaseFrameProvider;
 ####################################################
 use BaseFrame\Exception\Domain\ParseFatalException;
 use BaseFrame\System\File;
+use BaseFrame\System\UserAgent;
 
 /**
  * получаем get параметр из запроса
@@ -212,11 +213,7 @@ function isIpEqual(string $ip1, string $ip2):bool {
  */
 function getUa():string {
 
-	if (!isset($_SERVER["HTTP_USER_AGENT"]) || $_SERVER["HTTP_USER_AGENT"] == "") {
-		$_SERVER["HTTP_USER_AGENT"] = "robot";
-	}
-
-	return formatString($_SERVER["HTTP_USER_AGENT"]);
+	return UserAgent::getUserAgent();
 }
 
 /**
