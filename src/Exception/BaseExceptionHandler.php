@@ -2,7 +2,6 @@
 
 namespace BaseFrame\Exception;
 
-use JetBrains\PhpStorm\NoReturn;
 use Throwable;
 
 /**
@@ -38,10 +37,10 @@ class BaseExceptionHandler {
 	 *
 	 * @param BaseException $exception
 	 *
-	 * @return void
+	 * @return never
+
 	 */
-	#[NoReturn]
-	public function work(Throwable $exception):void {
+	public function work(Throwable $exception):never {
 
 		// раз исключение попало сюда, значит 500
 		$http_code  = HTTP_CODE_500;

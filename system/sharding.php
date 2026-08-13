@@ -3,6 +3,7 @@
 use BaseFrame\Exception\Domain\ReturnFatalException;
 use BaseFrame\Exception\Gateway\QueryFatalException;
 use BaseFrame\Conf\ConfProvider;
+use BaseFrame\EventBroker\Kafka;
 use BaseFrame\Server\ServerProvider;
 
 /**
@@ -160,6 +161,7 @@ class sharding {
 
 		Mcache::end();
 		Bus::end();
+		Kafka::end();
 
 		// удаляем соединения с MySQL
 		self::_endMySql();
@@ -228,7 +230,6 @@ class sharding {
  * класс для расширения и удобства работы с базой данных через PDO
  * @deprecated заменено на \BaseFrame\Database\PDODriver
  */
-#[\JetBrains\PhpStorm\Deprecated(reason: "заменено на \BaseFrame\Database\PDODriver")]
 class myPDObasic extends \BaseFrame\Database\PDODriver {
 
 	public const ISOLATION_READ_UNCOMMITTED = "READ UNCOMMITTED";

@@ -2255,8 +2255,9 @@ function confirmCliFlowBoolean(string $message, string $value = ""):bool {
  *
  * @return void
  * @throws parseException
+ *
+ * @deprecated
  */
-#[\JetBrains\PhpStorm\Deprecated]
 function assertTestServer():void {
 
 	ServerProvider::assertTest();
@@ -2267,8 +2268,9 @@ function assertTestServer():void {
  *
  * @return void
  * @throws parseException
+ *
+ * @deprecated
  */
-#[\JetBrains\PhpStorm\Deprecated]
 function assertNotPublicServer():void {
 
 	if (ServerProvider::isProduction()) {
@@ -2280,8 +2282,9 @@ function assertNotPublicServer():void {
  * проверяем на каком окружении находимся
  *
  * @return bool
+ *
+ * @deprecated
  */
-#[\JetBrains\PhpStorm\Deprecated]
 function isTestServer():bool {
 
 	if (ServerProvider::isTest()) {
@@ -2295,8 +2298,9 @@ function isTestServer():bool {
  * Проверяем что это локалка
  *
  * @return bool
+ *
+ * @deprecated
  */
-#[\JetBrains\PhpStorm\Deprecated]
 function isLocalServer():bool {
 
 	if (ServerProvider::isLocal()) {
@@ -2310,8 +2314,9 @@ function isLocalServer():bool {
  * проверяем, что это стейдж сервер
  *
  * @return bool
+ *
+ * @deprecated
  */
-#[\JetBrains\PhpStorm\Deprecated]
 function isStageServer():bool {
 
 	if (ServerProvider::isStage()) {
